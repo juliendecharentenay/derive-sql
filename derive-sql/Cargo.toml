@@ -1,0 +1,5 @@
+[workspace]
+members = [
+  "derive_sql",
+  "samples",
+]

@@ -8,12 +8,16 @@ impl<'a> ImplDerive<'a> {
   pub fn generate(&'a self) -> Result<proc_macro2::TokenStream, Box<dyn std::error::Error>> {
     self.validate()?;
     let create_table = self.impl_create_table()?;
-    let insert = self.impl_insert()?;
     let select = self.impl_select()?;
+    let insert = self.impl_insert()?;
+    let update = self.impl_update()?;
+    let delete = self.impl_delete()?;
     let r = quote::quote! {
       #create_table
       #select
       #insert
+      #update
+      #delete
     };
     Ok(r)
   }
@@ -34,6 +38,11 @@ impl<'a> ImplDerive<'a> {
     // let fields = self.get_fields(); // syn::Data::Struct(syn::DataStruct { fields, .. }) = &self.ast.data;
     match self.get_fields().ok_or("Unable to retrieve fields")? {
       syn::Fields::Named(fields_named) => {
+        // Check that have at least on named field
+        if fields_named.named.is_empty() {
+          return Err(Box::new(simple_error::SimpleError::new("DeriveSql macro does not support struct with no fields")));
+        }
+
         // Check that all named fields have a name (ie no tuple)
         if ! fields_named.named.iter().fold(true, |r, f| r && f.ident.is_some()) {
           return Err(Box::new(simple_error::SimpleError::new("DeriveSql macro does not support fields with no name such as tuple")));
@@ -75,6 +84,58 @@ impl<'a> ImplDerive<'a> {
   }
 
   /*
+   * output the implementation of
+   *     pub fn delete(self, conn: &Connection) -> Result<Self, Box<dyn Error>>
+   */
+  fn impl_delete(&'a self) -> Result<proc_macro2::TokenStream, Box<dyn std::error::Error>> {
+    let name = self.name();
+    let fields_named = &self.get_fields_named().ok_or("Unable to retrieve fields named")?.named;
+
+    let statement = format!("DELETE FROM {} WHERE {} = ?", 
+                            self.get_table_name(), 
+                            fields_named.iter().nth(0).unwrap().ident.as_ref().unwrap());
+    let parameter: &syn::Ident = fields_named.iter().nth(0).unwrap().ident.as_ref().unwrap();
+
+    let q = quote::quote! {
+      impl #name {
+        pub fn delete(self, conn: &rusqlite::Connection) -> Result<Self, Box<dyn std::error::Error>> {
+          conn.execute(#statement, [ &self.#parameter ])?;
+          Ok(self)
+        }
+      }
+    };
+    Ok(q)
+  }
+
+  /*
+   * output the implementation of
+   *     pub fn update(self, conn: &Connection) -> Result<Self, Box<dyn Error>>
+   */
+  fn impl_update(&'a self) -> Result<proc_macro2::TokenStream, Box<dyn std::error::Error>> {
+    let name = self.name();
+    let fields_named = &self.get_fields_named().ok_or("Unable to retrieve fields named")?.named;
+
+    let statement = format!("UPDATE {} SET {} WHERE {} = ?1",
+                            self.get_table_name(),
+                            fields_named.iter().enumerate()
+                               .map(|(i, f)| format!("{} = ?{}", f.ident.as_ref().unwrap(), i+2))
+                               .fold(String::default(), |a, f| if a.is_empty() { f } else { a + ", " + f.as_str() }),
+                            fields_named.iter().nth(0).unwrap().ident.as_ref().unwrap());
+    let mut parameters: Vec<&syn::Ident> = fields_named.iter().map(|f| f.ident.as_ref().unwrap()).collect();
+    parameters.insert(0, parameters[0]);
+
+    let q = quote::quote! {
+      impl #name {
+        pub fn update(self, conn: &rusqlite::Connection) -> Result<Self, Box<dyn std::error::Error>> {
+          conn.execute(#statement, ( #( &self.#parameters ),* ))?;
+          Ok(self)
+        }
+      }
+    };
+    Ok(q)
+  }
+
+  /*
    * output the implement of
    *     pub fn select(conn: &Connection) -> Result<Vec<Self>, Box<dyn Error>>
    */
@@ -109,7 +170,7 @@ impl<'a> ImplDerive<'a> {
 
   /*
    * output the implementation of
-   *    pub fn insert(&self, conn: &Connection) -> Result<(), Box<dyn Error>> 
+   *    pub fn insert(self, conn: &Connection) -> Result<Self, Box<dyn Error>> 
    */
   fn impl_insert(&'a self) -> Result<proc_macro2::TokenStream, Box<dyn std::error::Error>> {
     let name = self.name();
@@ -134,9 +195,9 @@ impl<'a> ImplDerive<'a> {
                          
     let q = quote::quote! {
       impl #name {
-        pub fn insert(&self, conn: &rusqlite::Connection) -> Result<(), Box<dyn std::error::Error>> {
+        pub fn insert(self, conn: &rusqlite::Connection) -> Result<Self, Box<dyn std::error::Error>> {
           conn.execute(#statement, ( #( &self.#parameters ),* ))?;
-          Ok(())
+          Ok(self)
         }
       }
     };
@@ -159,7 +220,8 @@ impl<'a> ImplDerive<'a> {
               if matches!(sql_type, SqlType::Unsupported) {
                 statement
               } else if statement.is_empty() {
-                format!("{} {} PRIMARY KEY", field.ident.as_ref().unwrap(), SqlType::to_string(&sql_type))
+                // format!("{} {} PRIMARY KEY", field.ident.as_ref().unwrap(), SqlType::to_string(&sql_type))
+                format!("{} {}", field.ident.as_ref().unwrap(), SqlType::to_string(&sql_type))
               } else {
                 format!("{}, {} {}", statement, field.ident.as_ref().unwrap(), SqlType::to_string(&sql_type))
               }

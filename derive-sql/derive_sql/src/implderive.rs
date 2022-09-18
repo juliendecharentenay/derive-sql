@@ -8,15 +8,15 @@ impl<'a> ImplDerive<'a> {
   pub fn generate(&'a self) -> Result<proc_macro2::TokenStream, Box<dyn std::error::Error>> {
     self.validate()?;
     let create_table = self.impl_create_table()?;
-    let select = self.impl_select()?;
-    let insert = self.impl_insert()?;
-    let update = self.impl_update()?;
-    let delete = self.impl_delete()?;
+    let select    = self.impl_select()?;
+    let insert    = self.impl_insert()?;
+    let update_to = self.impl_update_to()?;
+    let delete    = self.impl_delete()?;
     let r = quote::quote! {
       #create_table
       #select
       #insert
-      #update
+      #update_to
       #delete
     };
     Ok(r)
@@ -76,7 +76,7 @@ impl<'a> ImplDerive<'a> {
   }
   
   fn get_table_name(&'a self) -> String {
-    format!("{}", self.name()).to_lowercase()
+    format!("{}", self.name())
   }
 
   fn name(&'a self) -> &syn::Ident {
@@ -109,26 +109,27 @@ impl<'a> ImplDerive<'a> {
 
   /*
    * output the implementation of
-   *     pub fn update(self, conn: &Connection) -> Result<Self, Box<dyn Error>>
+   *     pub fn update_to(self, conn: &Connection, update: Self) -> Result<Self, Box<dyn Error>>
    */
-  fn impl_update(&'a self) -> Result<proc_macro2::TokenStream, Box<dyn std::error::Error>> {
+  fn impl_update_to(&'a self) -> Result<proc_macro2::TokenStream, Box<dyn std::error::Error>> {
     let name = self.name();
     let fields_named = &self.get_fields_named().ok_or("Unable to retrieve fields named")?.named;
 
-    let statement = format!("UPDATE {} SET {} WHERE {} = ?1",
+    let statement = format!("UPDATE {} SET {} WHERE {}",
                             self.get_table_name(),
                             fields_named.iter().enumerate()
-                               .map(|(i, f)| format!("{} = ?{}", f.ident.as_ref().unwrap(), i+2))
+                               .map(|(i, f)| format!("{} = ?{}", f.ident.as_ref().unwrap(), i+1+fields_named.len()))
                                .fold(String::default(), |a, f| if a.is_empty() { f } else { a + ", " + f.as_str() }),
-                            fields_named.iter().nth(0).unwrap().ident.as_ref().unwrap());
-    let mut parameters: Vec<&syn::Ident> = fields_named.iter().map(|f| f.ident.as_ref().unwrap()).collect();
-    parameters.insert(0, parameters[0]);
+                            fields_named.iter().enumerate()
+                               .map(|(i, f)| format!("{} = ?{}", f.ident.as_ref().unwrap(), i+1))
+                               .fold(String::default(), |a, f| if a.is_empty() { f } else { a + " AND " + f.as_str() }));
+    let parameters: Vec<&syn::Ident> = fields_named.iter().map(|f| f.ident.as_ref().unwrap()).collect();
 
     let q = quote::quote! {
       impl #name {
-        pub fn update(self, conn: &rusqlite::Connection) -> Result<Self, Box<dyn std::error::Error>> {
-          conn.execute(#statement, ( #( &self.#parameters ),* ))?;
-          Ok(self)
+        pub fn update_to(self, conn: &rusqlite::Connection, update: Self) -> Result<Self, Box<dyn std::error::Error>> {
+          conn.execute(#statement, ( #( &self.#parameters ),* , #( &update.#parameters ),* ))?;
+          Ok(update)
         }
       }
     };
@@ -206,6 +207,7 @@ impl<'a> ImplDerive<'a> {
 
   /*
    * output the implementation the "create_table" function
+   *   pub fn create_table(conn: &Connection) -> Result<(), Box<dyn Error>>
    */
   fn impl_create_table(&'a self) -> Result<proc_macro2::TokenStream, Box<dyn std::error::Error>> {
     let name = self.name();

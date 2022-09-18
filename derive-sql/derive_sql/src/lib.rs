@@ -55,10 +55,11 @@
 //! assert!(p.age == 27);
 //!
 //! // Update Jane
-//! let mut jane: Person = Person::select(&conn).unwrap()
+//! let jane: Person = Person::select(&conn).unwrap()
 //!             .into_iter().find(|p| p.name.eq("Jane")).unwrap();
-//! jane.age += 1;
-//! let jane = jane.update(&conn).unwrap();
+//! let update_to_jane = Person { name: jane.name.clone(), age: jane.age+1 };
+//! let updated_jane = jane.update_to(&conn, update_to_jane).unwrap();
+//! assert!(updated_jane.age == 28);
 //!
 //! // Check Jane's age
 //! let p: Person = Person::select(&conn).unwrap()

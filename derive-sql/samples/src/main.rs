@@ -8,7 +8,8 @@ struct Person {
 }
 
 fn main() {
- let conn = rusqlite::Connection::open_in_memory().unwrap();
+ // let conn = rusqlite::Connection::open_in_memory().unwrap();
+ let conn = rusqlite::Connection::open("./test.db3").unwrap();
 
  // Create Table in SQL database
  Person::create_table(&conn).unwrap();

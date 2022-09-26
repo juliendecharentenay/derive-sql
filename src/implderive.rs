@@ -8,12 +8,14 @@ impl<'a> ImplDerive<'a> {
   pub fn generate(&'a self) -> Result<proc_macro2::TokenStream, Box<dyn std::error::Error>> {
     self.validate()?;
     let create_table = self.impl_create_table()?;
+    let table_exists = self.impl_table_exists()?;
     let select    = self.impl_select()?;
     let insert    = self.impl_insert()?;
     let update_to = self.impl_update_to()?;
     let delete    = self.impl_delete()?;
     let r = quote::quote! {
       #create_table
+      #table_exists
       #select
       #insert
       #update_to
@@ -197,12 +199,32 @@ impl<'a> ImplDerive<'a> {
     let q = quote::quote! {
       impl #name {
         pub fn insert(self, conn: &rusqlite::Connection) -> Result<Self, Box<dyn std::error::Error>> {
-          conn.execute(#statement, ( #( &self.#parameters ),* ))?;
+          let mut s = conn.execute(#statement, ( #( &self.#parameters ),* ))?;
           Ok(self)
         }
       }
     };
     Ok(q)
+  }
+
+  /*
+   * Output the implementation of the "table_exists" function
+   *   pub fn table_exists(conn: &Connection) -> Result<bool, Box<dyn Error>>
+   */
+  fn impl_table_exists(&'a self) -> Result<proc_macro2::TokenStream, Box<dyn std::error::Error>> {
+    let name = self.name();
+    // let statement = format!("SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = '{}'", self.get_table_name());
+    let statement = format!("SELECT * FROM sqlite_master WHERE name='{}'", self.get_table_name());
+    let r = quote::quote! {
+      impl #name {
+        pub fn table_exists(conn: &rusqlite::Connection) -> Result<bool, Box<dyn std::error::Error>> {
+          let mut s = conn.prepare(#statement)?;
+          let r = s.exists([])?;
+          Ok(r)
+        }
+      }
+    };
+    Ok(r)
   }
 
   /*
@@ -229,7 +251,7 @@ impl<'a> ImplDerive<'a> {
               }
             });
       
-    let create_table_statement = format!("CREATE TABLE {} ( {} )", self.get_table_name(), fields_statement);
+    let create_table_statement = format!("CREATE TABLE IF NOT EXISTS {} ( {} )", self.get_table_name(), fields_statement);
              
     let r = quote::quote! {
       impl #name {

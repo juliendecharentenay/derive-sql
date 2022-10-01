@@ -2,7 +2,7 @@ use std::error::Error;
 use derive_sql::DeriveSql;
 
 #[derive(DeriveSql, Debug)]
-struct Contact {
+pub struct Contact {
   name: String,
   phone_number: String,
   email: String,
@@ -18,29 +18,32 @@ fn main() {
 }
 
 fn sample(conn: &rusqlite::Connection) -> Result<(), Box<dyn Error>> {
-  Contact::create_table(conn)?;
+  let db = ContactSql::from_rusqlite(conn)?;
+  db.create_table()?;
 
   // Insert a new contact
   let contact = Contact { name: "John Doe".to_string(), phone_number: "01223456789".to_string(), email: "john@doe.com".to_string() };
-  contact.insert(conn)?;
+  db.insert(&contact)?;
 
   // Add another contact
-  Contact { name: "Jane Doe".to_string(), phone_number: "00000000".to_string(), email: "jane@doe.com".to_string() }.insert(conn)?;
+  db.insert(
+    &Contact { name: "Jane Doe".to_string(), phone_number: "00000000".to_string(), email: "jane@doe.com".to_string() }
+  )?;
 
   // Lookup John Doe's contact
-  let contact = Contact::select(conn)?
+  let contact = db.select()?
         .into_iter()
         .find(|c| c.name.eq("John Doe"))
         .ok_or("Unable to find John Doe's contact")?;
 
   // Update contact
   let update = Contact { name: contact.name.clone(), phone_number: "987654321".to_string(), email: contact.email.clone() };
-  contact.update_to(conn, update)?;
+  db.update_to(&contact, &update)?;
 
 
   // List all contacts
   println!("List all contact stored in table");
-  for contact in Contact::select(conn)?.iter() {
+  for contact in db.select()?.iter() {
     println!("{}: {} / {}", contact.name, contact.phone_number, contact.email);
   }
 
@@ -50,13 +53,14 @@ fn sample(conn: &rusqlite::Connection) -> Result<(), Box<dyn Error>> {
 #[test]
 fn test_2_create_table_statements() -> Result<(), Box<dyn Error>> {
   let conn = rusqlite::Connection::open_in_memory()?;
-  assert!(Contact::table_exists(&conn)? == false);
+  let db = ContactSql::from_rusqlite(&conn)?;
+  assert!(db.table_exists()? == false);
 
-  Contact::create_table(&conn)?;
-  assert!(Contact::table_exists(&conn)? == true);
+  db.create_table()?;
+  assert!(db.table_exists()? == true);
 
-  Contact::create_table(&conn)?;
-  assert!(Contact::table_exists(&conn)? == true);
+  db.create_table()?;
+  assert!(db.table_exists()? == true);
 
   Ok(())
 }

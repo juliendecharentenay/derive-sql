@@ -31,49 +31,56 @@
 //! #   age: u32,
 //! # }
 //! #
-//! # let conn = rusqlite::Connection::open_in_memory().unwrap();
+//!
+//! let conn = rusqlite::Connection::open_in_memory().unwrap();
+//!
+//! let person_sql = PersonSql::from_rusqlite(&conn).unwrap();
 //!
 //! // Create Table in SQL database
-//! Person::create_table(&conn).unwrap();
+//! person_sql.create_table().unwrap();
 //!
 //! // Insert person into SQL database
 //! let person = Person { name: "Jo".to_string(), age: 24 };
-//! let person = person.insert(&conn).unwrap();
+//! person_sql.insert(&person).unwrap();
 //!
 //! // Retrieve list of persons from SQL database
-//! let persons: Vec<Person> = Person::select(&conn).unwrap();
+//! let persons: Vec<Person> = person_sql.select().unwrap();
 //! assert!(persons.len() == 1);
 //! assert!(persons[0].name.eq("Jo"));
 //!
 //! // Insert Jane
 //! let jane = Person { name: "Jane".to_string(), age: 27 };
-//! let jane = jane.insert(&conn).unwrap();
+//! person_sql.insert(&jane).unwrap();
 //!
 //! // Check Jane's age
-//! let p: Person = Person::select(&conn).unwrap()
+//! let p: Person = person_sql.select().unwrap()
 //!             .into_iter().find(|p| p.name.eq("Jane")).unwrap();
 //! assert!(p.age == 27);
 //!
 //! // Update Jane
-//! let jane: Person = Person::select(&conn).unwrap()
+//! let jane: Person = person_sql.select().unwrap()
 //!             .into_iter().find(|p| p.name.eq("Jane")).unwrap();
 //! let update_to_jane = Person { name: jane.name.clone(), age: jane.age+1 };
-//! let updated_jane = jane.update_to(&conn, update_to_jane).unwrap();
+//! person_sql.update_to(&jane, &update_to_jane).unwrap();
+//! let updated_jane: Person = person_sql.select().unwrap()
+//!             .into_iter().find(|p| p.name.eq("Jane")).unwrap();
 //! assert!(updated_jane.age == 28);
 //!
 //! // Check Jane's age
-//! let p: Person = Person::select(&conn).unwrap()
+//! let p: Person = person_sql.select().unwrap()
 //!             .into_iter().find(|p| p.name.eq("Jane")).unwrap();
 //! assert!(p.age == 28);
 //!
 //! // Delete Jo
-//! let jo: Person = Person::select(&conn).unwrap()
+//! let jo: Person = person_sql.select().unwrap()
 //!             .into_iter().find(|p| p.name.eq("Jo")).unwrap();
-//! let jo = jo.delete(&conn).unwrap();
-//! assert!(jo.name.eq("Jo"));
+//! person_sql.delete(&jo).unwrap();
+//! let jo: Option<Person> = person_sql.select().unwrap()
+//!             .into_iter().find(|p| p.name.eq("Jo"));
+//! assert!(jo.is_none());
 //!
 //! // Check that database only contains Jane
-//! let persons: Vec<Person> = Person::select(&conn).unwrap();
+//! let persons: Vec<Person> = person_sql.select().unwrap();
 //! assert!(persons.len() == 1);
 //! assert!(persons[0].name.eq("Jane"));
 //!

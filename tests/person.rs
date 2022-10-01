@@ -2,7 +2,7 @@ use std::error::Error;
 use derive_sql::DeriveSql;
 
 #[derive(DeriveSql)]
-struct Person {
+pub struct Person {
   name: String,
   age:  u32,
 }
@@ -16,16 +16,18 @@ fn main() {
   }
 }
 
-pub fn sample(conn: &rusqlite::Connection) -> Result<(), Box<dyn Error>> {
+fn sample(conn: &rusqlite::Connection) -> Result<(), Box<dyn Error>> {
+  let db = PersonSql::from_rusqlite(conn)?;
+
   // Create Table in SQL database
-  Person::create_table(&conn)?;
+  db.create_table()?;
 
   // Insert person into SQL database
   let person = Person { name: "Jo".to_string(), age: 44 };
-  person.insert(&conn)?;
+  db.insert(&person)?;
 
   // Retrieve list of persons from SQL database
-  let persons: Vec<Person> = Person::select(&conn)?;
+  let persons: Vec<Person> = db.select()?;
   assert!(persons.len() == 1);
   assert!(persons[0].name.eq("Jo"));
 

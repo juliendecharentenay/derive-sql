@@ -7,13 +7,19 @@ pub struct ImplDerive<'a> {
 impl<'a> ImplDerive<'a> {
   pub fn generate(&'a self) -> Result<proc_macro2::TokenStream, Box<dyn std::error::Error>> {
     self.validate()?;
+    let enum_        = self.impl_enum()?;
+    let struct_sql   = self.impl_struct_sql()?;
+    let constructor  = self.impl_constructor()?;
     let create_table = self.impl_create_table()?;
     let table_exists = self.impl_table_exists()?;
-    let select    = self.impl_select()?;
-    let insert    = self.impl_insert()?;
-    let update_to = self.impl_update_to()?;
-    let delete    = self.impl_delete()?;
+    let select       = self.impl_select()?;
+    let insert       = self.impl_insert()?;
+    let update_to    = self.impl_update_to()?;
+    let delete       = self.impl_delete()?;
     let r = quote::quote! {
+      #enum_
+      #struct_sql
+      #constructor
       #create_table
       #table_exists
       #select
@@ -85,24 +91,63 @@ impl<'a> ImplDerive<'a> {
     &self.ast.ident
   }
 
+  fn name_sql(&'a self) -> syn::Ident {
+    syn::Ident::new(format!("{}Sql", self.name()).as_str(), self.name().span().clone())
+  }
+
   /*
-   * output the implementation of
-   *     pub fn delete(self, conn: &Connection) -> Result<Self, Box<dyn Error>>
+   * output an enum to store the SQL connection type
+   *  enum SqlConnection {
+   *       Rusqlite(&'a rusqlite::Connection)
+   *  }
    */
-  fn impl_delete(&'a self) -> Result<proc_macro2::TokenStream, Box<dyn std::error::Error>> {
-    let name = self.name();
-    let fields_named = &self.get_fields_named().ok_or("Unable to retrieve fields named")?.named;
-
-    let statement = format!("DELETE FROM {} WHERE {} = ?", 
-                            self.get_table_name(), 
-                            fields_named.iter().nth(0).unwrap().ident.as_ref().unwrap());
-    let parameter: &syn::Ident = fields_named.iter().nth(0).unwrap().ident.as_ref().unwrap();
-
+  fn impl_enum(&'a self) -> Result<proc_macro2::TokenStream, Box<dyn std::error::Error>> {
+    let doc = format!("This enum provides an identification of the different SQL wrapper supported");
     let q = quote::quote! {
-      impl #name {
-        pub fn delete(self, conn: &rusqlite::Connection) -> Result<Self, Box<dyn std::error::Error>> {
-          conn.execute(#statement, [ &self.#parameter ])?;
-          Ok(self)
+      #[doc = #doc]
+      enum SqlConnection<'a> {
+        Rusqlite(&'a rusqlite::Connection),
+      }
+    };
+    Ok(q)
+  }
+
+  /*
+   * output the AbcSql Struct:
+   *  pub struct AbcSql<'a> {
+   *    connection: &'a rusqlite::Connection,
+   *  }
+   */
+  fn impl_struct_sql(&'a self) -> Result<proc_macro2::TokenStream, Box<dyn std::error::Error>> {
+    let name_sql = self.name_sql();
+    let doc = format!(r#"
+The struct {} wraps around the connection to the SQL database - specified as part of the constructor -
+and manages the interaction between the software and the database
+"#, name_sql); 
+    let q = quote::quote! {
+      #[doc = #doc]
+      pub struct #name_sql<'a> {
+        connection: SqlConnection<'a>,
+      }
+    };
+
+    Ok(q)
+  }
+
+  /*
+   * output the AbcSql constructor:
+   *   fn from_rusqlite(conn) -> Result<AbcSql, Box<dyn Error>>
+   */
+  fn impl_constructor(&'a self) -> Result<proc_macro2::TokenStream, Box<dyn std::error::Error>> {
+    let name_sql = self.name_sql();
+    let doc = format!(r#"
+Construct a SQL connector to manipulate struct of type {} to an SQLite database using the rusqlite wrapper
+"#, self.name());
+    let q = quote::quote! {
+      #[doc = #doc]
+      impl<'a> #name_sql<'a> {
+        pub fn from_rusqlite(conn: &'a rusqlite::Connection) -> Result<#name_sql<'a>, Box<dyn std::error::Error>> {
+          Ok( #name_sql { connection: SqlConnection::Rusqlite(conn) } )
         }
       }
     };
@@ -111,10 +156,40 @@ impl<'a> ImplDerive<'a> {
 
   /*
    * output the implementation of
-   *     pub fn update_to(self, conn: &Connection, update: Self) -> Result<Self, Box<dyn Error>>
+   *     pub fn delete(&self, i: &Abc) -> Result<(), Box<dyn Error>>
+   */
+  fn impl_delete(&'a self) -> Result<proc_macro2::TokenStream, Box<dyn std::error::Error>> {
+    let name     = self.name();
+    let name_sql = self.name_sql();
+    let fields_named = &self.get_fields_named().ok_or("Unable to retrieve fields named")?.named;
+
+    let statement = format!("DELETE FROM {} WHERE {} = ?", 
+                            self.get_table_name(), 
+                            fields_named.iter().nth(0).unwrap().ident.as_ref().unwrap());
+    let parameter: &syn::Ident = fields_named.iter().nth(0).unwrap().ident.as_ref().unwrap();
+
+    let q = quote::quote! {
+      impl<'a> #name_sql<'a> {
+        pub fn delete(&self, i: &#name) -> Result<(), Box<dyn std::error::Error>> {
+          match self.connection {
+            SqlConnection::Rusqlite(conn) => {
+              conn.execute(#statement, [ &i.#parameter ])?;
+              Ok(())
+            }
+          }
+        }
+      }
+    };
+    Ok(q)
+  }
+
+  /*
+   * output the implementation of
+   *     pub fn update_to(&self, from: &Abc, to: &Abc) -> Result<(), Box<dyn Error>>
    */
   fn impl_update_to(&'a self) -> Result<proc_macro2::TokenStream, Box<dyn std::error::Error>> {
-    let name = self.name();
+    let name     = self.name();
+    let name_sql = self.name_sql();
     let fields_named = &self.get_fields_named().ok_or("Unable to retrieve fields named")?.named;
 
     let statement = format!("UPDATE {} SET {} WHERE {}",
@@ -128,10 +203,14 @@ impl<'a> ImplDerive<'a> {
     let parameters: Vec<&syn::Ident> = fields_named.iter().map(|f| f.ident.as_ref().unwrap()).collect();
 
     let q = quote::quote! {
-      impl #name {
-        pub fn update_to(self, conn: &rusqlite::Connection, update: Self) -> Result<Self, Box<dyn std::error::Error>> {
-          conn.execute(#statement, ( #( &self.#parameters ),* , #( &update.#parameters ),* ))?;
-          Ok(update)
+      impl<'a> #name_sql<'a> {
+        pub fn update_to(&self, from: &#name, to: &#name) -> Result<(), Box<dyn std::error::Error>> {
+          match self.connection {
+            SqlConnection::Rusqlite(conn) => {
+              conn.execute(#statement, ( #( &from.#parameters ),* , #( &to.#parameters ),* ))?;
+              Ok(())
+            }
+          }
         }
       }
     };
@@ -140,10 +219,11 @@ impl<'a> ImplDerive<'a> {
 
   /*
    * output the implement of
-   *     pub fn select(conn: &Connection) -> Result<Vec<Self>, Box<dyn Error>>
+   *     pub fn select(&self) -> Result<Vec<Abc>, Box<dyn Error>>
    */
   fn impl_select(&'a self) -> Result<proc_macro2::TokenStream, Box<dyn std::error::Error>> {
-    let name = self.name();
+    let name     = self.name();
+    let name_sql = self.name_sql();
     let fields_named = &self.get_fields_named().ok_or("Unable to retrieve fields named")?.named;
 
     let statement = format!("SELECT {} FROM {}",
@@ -159,12 +239,16 @@ impl<'a> ImplDerive<'a> {
                                      .collect();
 
     let q = quote::quote! {
-      impl #name {
-        pub fn select(conn: &rusqlite::Connection) -> Result<Vec<#name>, Box<dyn std::error::Error>> {
-          let mut s = conn.prepare(#statement)?;
-          let i = s.query_map([], |r| Ok( #name { #( #fields : #fields_assignment ),* } ) )?;
-          let r = i.collect::<Result<Vec<#name>, rusqlite::Error>>()?;
-          Ok(r)
+      impl<'a> #name_sql<'a> {
+        pub fn select(&self) -> Result<Vec<#name>, Box<dyn std::error::Error>> {
+          match self.connection {
+            SqlConnection::Rusqlite(conn) => {
+              let mut s = conn.prepare(#statement)?;
+              let i = s.query_map([], |r| Ok( #name { #( #fields : #fields_assignment ),* } ) )?;
+              let r = i.collect::<Result<Vec<#name>, rusqlite::Error>>()?;
+              Ok(r)
+            }
+          }
         }
       }
     };
@@ -173,10 +257,11 @@ impl<'a> ImplDerive<'a> {
 
   /*
    * output the implementation of
-   *    pub fn insert(self, conn: &Connection) -> Result<Self, Box<dyn Error>> 
+   *    pub fn insert(&self, o: &Abc) -> Result<(), Box<dyn Error>> 
    */
   fn impl_insert(&'a self) -> Result<proc_macro2::TokenStream, Box<dyn std::error::Error>> {
-    let name = self.name();
+    let name     = self.name();
+    let name_sql = self.name_sql();
     let fields_named = &self.get_fields_named().ok_or("Unable to retrieve fields named")?.named;
 
     let statement = format!("INSERT INTO {} ({}) VALUES ({})",
@@ -197,10 +282,14 @@ impl<'a> ImplDerive<'a> {
                           .collect();
                          
     let q = quote::quote! {
-      impl #name {
-        pub fn insert(self, conn: &rusqlite::Connection) -> Result<Self, Box<dyn std::error::Error>> {
-          let mut s = conn.execute(#statement, ( #( &self.#parameters ),* ))?;
-          Ok(self)
+      impl<'a> #name_sql<'a> {
+        pub fn insert(&self, i: &#name) -> Result<(), Box<dyn std::error::Error>> {
+          match self.connection {
+            SqlConnection::Rusqlite(conn) => {
+              conn.execute(#statement, ( #( &i.#parameters ),* ))?;
+              Ok(())
+            }
+          }
         }
       }
     };
@@ -209,18 +298,22 @@ impl<'a> ImplDerive<'a> {
 
   /*
    * Output the implementation of the "table_exists" function
-   *   pub fn table_exists(conn: &Connection) -> Result<bool, Box<dyn Error>>
+   *   pub fn table_exists(&self) -> Result<bool, Box<dyn Error>>
    */
   fn impl_table_exists(&'a self) -> Result<proc_macro2::TokenStream, Box<dyn std::error::Error>> {
-    let name = self.name();
+    let name_sql = self.name_sql();
     // let statement = format!("SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = '{}'", self.get_table_name());
     let statement = format!("SELECT * FROM sqlite_master WHERE name='{}'", self.get_table_name());
     let r = quote::quote! {
-      impl #name {
-        pub fn table_exists(conn: &rusqlite::Connection) -> Result<bool, Box<dyn std::error::Error>> {
-          let mut s = conn.prepare(#statement)?;
-          let r = s.exists([])?;
-          Ok(r)
+      impl<'a> #name_sql<'a> {
+        pub fn table_exists(&self) -> Result<bool, Box<dyn std::error::Error>> {
+          match self.connection {
+            SqlConnection::Rusqlite(conn) => {
+              let mut s = conn.prepare(#statement)?;
+              let r = s.exists([])?;
+              Ok(r)
+            }
+          }
         }
       }
     };
@@ -229,10 +322,10 @@ impl<'a> ImplDerive<'a> {
 
   /*
    * output the implementation the "create_table" function
-   *   pub fn create_table(conn: &Connection) -> Result<(), Box<dyn Error>>
+   *   pub fn create_table(&self ) -> Result<(), Box<dyn Error>>
    */
   fn impl_create_table(&'a self) -> Result<proc_macro2::TokenStream, Box<dyn std::error::Error>> {
-    let name = self.name();
+    let name_sql = self.name_sql();
 
     let fields_statement = self.get_fields_named()
       .ok_or("Unable to retrieve FieldsNamed")?
@@ -253,15 +346,19 @@ impl<'a> ImplDerive<'a> {
       
     let create_table_statement = format!("CREATE TABLE IF NOT EXISTS {} ( {} )", self.get_table_name(), fields_statement);
              
-    let r = quote::quote! {
-      impl #name {
-        pub fn create_table(conn: &rusqlite::Connection) -> Result<(), Box<dyn std::error::Error>> {
-          conn.execute(#create_table_statement, ())?;
-          Ok(())
+    let q = quote::quote! {
+      impl<'a> #name_sql<'a> {
+        pub fn create_table(&self) -> Result<(), Box<dyn std::error::Error>> {
+          match self.connection {
+            SqlConnection::Rusqlite(conn) => {
+              conn.execute(#create_table_statement, ())?;
+              Ok(())
+            }
+          }
         }
       }
     };
-    Ok(r)
+    Ok(q)
   }
 }
 

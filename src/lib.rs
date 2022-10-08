@@ -44,7 +44,8 @@
 //! person_sql.insert(&person).unwrap();
 //!
 //! // Retrieve list of persons from SQL database
-//! let persons: Vec<Person> = person_sql.select().unwrap();
+//! assert!(person_sql.count_all().unwrap() == 1);
+//! let persons: Vec<Person> = person_sql.select_all().unwrap();
 //! assert!(persons.len() == 1);
 //! assert!(persons[0].name.eq("Jo"));
 //!
@@ -53,34 +54,39 @@
 //! person_sql.insert(&jane).unwrap();
 //!
 //! // Check Jane's age
-//! let p: Person = person_sql.select().unwrap()
-//!             .into_iter().find(|p| p.name.eq("Jane")).unwrap();
+//! let select = SelectBuilder::default().set_filter(Filter::NameEqual("Jane".to_string())).build();
+//! let p: Person = person_sql.select(select).unwrap().into_iter().nth(0).unwrap();
 //! assert!(p.age == 27);
+//! // or
+//! let filter = Filter::And(Box::new(Filter::NameEqual("Jane".to_string())), Box::new(Filter::AgeEqual(27)));
+//! assert!(person_sql.count(filter.into()).unwrap() == 1);
 //!
 //! // Update Jane
-//! let jane: Person = person_sql.select().unwrap()
-//!             .into_iter().find(|p| p.name.eq("Jane")).unwrap();
+//! let filter = Filter::NameEqual("Jane".to_string());
+//! let jane: Person = person_sql.select_one(filter.into()).unwrap().unwrap();
 //! let update_to_jane = Person { name: jane.name.clone(), age: jane.age+1 };
 //! person_sql.update_to(&jane, &update_to_jane).unwrap();
-//! let updated_jane: Person = person_sql.select().unwrap()
-//!             .into_iter().find(|p| p.name.eq("Jane")).unwrap();
+//!
+//! let filter = Filter::NameEqual("Jane".to_string());
+//! let updated_jane: Person = person_sql.select(filter.into()).unwrap().into_iter().nth(0).unwrap();
 //! assert!(updated_jane.age == 28);
 //!
 //! // Check Jane's age
-//! let p: Person = person_sql.select().unwrap()
-//!             .into_iter().find(|p| p.name.eq("Jane")).unwrap();
+//! let p: Person = person_sql.select(Filter::AgeGreaterThan(27).into()).unwrap().into_iter().nth(0).unwrap();
 //! assert!(p.age == 28);
 //!
 //! // Delete Jo
-//! let jo: Person = person_sql.select().unwrap()
-//!             .into_iter().find(|p| p.name.eq("Jo")).unwrap();
-//! person_sql.delete(&jo).unwrap();
-//! let jo: Option<Person> = person_sql.select().unwrap()
-//!             .into_iter().find(|p| p.name.eq("Jo"));
-//! assert!(jo.is_none());
+//! let filter = Filter::And(Box::new(Filter::NameEqual("Jo".to_string())), Box::new(Filter::AgeEqual(24)));
+//! let jo: Person = person_sql.select(filter.into()).unwrap()
+//!             .into_iter().nth(0).unwrap();
+//! person_sql.delete(jo.into()).unwrap();
+//!
+//! let filter = Filter::NameEqual("Jo".to_string());
+//! let jo: Vec<Person> = person_sql.select(filter.into()).unwrap();
+//! assert!(jo.len() == 0);
 //!
 //! // Check that database only contains Jane
-//! let persons: Vec<Person> = person_sql.select().unwrap();
+//! let persons: Vec<Person> = person_sql.select_all().unwrap();
 //! assert!(persons.len() == 1);
 //! assert!(persons[0].name.eq("Jane"));
 //!
@@ -91,6 +97,10 @@ use syn;
 
 mod sqltype;
 mod implderive;
+mod implfilter;
+mod implselect;
+mod implfilterwrapper;
+mod utility;
 
 use sqltype::SqlType;
 use implderive::ImplDerive;

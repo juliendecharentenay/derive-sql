@@ -27,7 +27,7 @@ fn sample(conn: &rusqlite::Connection) -> Result<(), Box<dyn Error>> {
   db.insert(&person)?;
 
   // Retrieve list of persons from SQL database
-  let persons: Vec<Person> = db.select()?;
+  let persons: Vec<Person> = db.select_all()?;
   assert!(persons.len() == 1);
   assert!(persons[0].name.eq("Jo"));
 

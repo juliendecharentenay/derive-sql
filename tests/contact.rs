@@ -31,7 +31,7 @@ fn sample(conn: &rusqlite::Connection) -> Result<(), Box<dyn Error>> {
   )?;
 
   // Lookup John Doe's contact
-  let contact = db.select()?
+  let contact = db.select_all()?
         .into_iter()
         .find(|c| c.name.eq("John Doe"))
         .ok_or("Unable to find John Doe's contact")?;
@@ -39,13 +39,18 @@ fn sample(conn: &rusqlite::Connection) -> Result<(), Box<dyn Error>> {
   // Update contact
   let update = Contact { name: contact.name.clone(), phone_number: "987654321".to_string(), email: contact.email.clone() };
   db.update_to(&contact, &update)?;
-
+  assert!(db.count_all()? == 2);
 
   // List all contacts
-  println!("List all contact stored in table");
-  for contact in db.select()?.iter() {
+  println!("List all {} contacts stored in table", db.count_all()?);
+  for contact in db.select_all()?.iter() {
     println!("{}: {} / {}", contact.name, contact.phone_number, contact.email);
   }
+
+  // Empty all contacts
+  db.delete_all()?;
+  println!("Number of contact after deleting database: {}", db.count_all()?);
+  assert!(db.count_all()? == 0);
 
   Ok(())
 }
@@ -61,6 +66,10 @@ fn test_2_create_table_statements() -> Result<(), Box<dyn Error>> {
 
   db.create_table()?;
   assert!(db.table_exists()? == true);
+
+  db.delete_table()?;
+  assert!(db.table_exists()? == false);
+
 
   Ok(())
 }

@@ -16,6 +16,7 @@ syn          = { version = "1" }
 quote        = "1"
 proc-macro2  = "1"
 simple-error = "0.2"
+convert_case = "0.6"
 
 [dev-dependencies]
 rusqlite = { version = "0.28" }

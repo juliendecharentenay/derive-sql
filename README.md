@@ -15,7 +15,7 @@ To use this project procedural macro, add the following in your `Cargo.toml`:
 
 ```
 [dependencies]
-derive-sql = { version = "0.1" }
+derive-sql = { version = "0.2" }
 ```
 
 And annotate your struct as follows:

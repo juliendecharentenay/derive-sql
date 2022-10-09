@@ -1,6 +1,5 @@
 //! Define data type and their conversion to SQL data type
 //!
-use syn;
 
 pub enum SqlType {
   Integer,

@@ -12,18 +12,18 @@ impl<'a> ImplDerive<'a> {
     let o_select     = crate::implselect::ImplSelect { ast: self.ast }.generate()?;
     let o_select_one = crate::implfilterwrapper::ImplFilterWrapper { 
                                 ast: self.ast, 
-                                struct_ident: syn::Ident::new("SelectOne", self.name().span().clone()),
-                                builder_ident: syn::Ident::new("SelectOneBuilder", self.name().span().clone()),
+                                struct_ident: syn::Ident::new("SelectOne", self.name().span()),
+                                builder_ident: syn::Ident::new("SelectOneBuilder", self.name().span()),
                        }.generate()?;
     let o_count      = crate::implfilterwrapper::ImplFilterWrapper { 
                                 ast: self.ast, 
-                                struct_ident: syn::Ident::new("Count", self.name().span().clone()),
-                                builder_ident: syn::Ident::new("CountBuilder", self.name().span().clone()),
+                                struct_ident: syn::Ident::new("Count", self.name().span()),
+                                builder_ident: syn::Ident::new("CountBuilder", self.name().span()),
                        }.generate()?;
     let o_delete     = crate::implfilterwrapper::ImplFilterWrapper { 
                                 ast: self.ast, 
-                                struct_ident: syn::Ident::new("Delete", self.name().span().clone()),
-                                builder_ident: syn::Ident::new("DeleteBuilder", self.name().span().clone()),
+                                struct_ident: syn::Ident::new("Delete", self.name().span()),
+                                builder_ident: syn::Ident::new("DeleteBuilder", self.name().span()),
                        }.generate()?;
     let enum_        = self.impl_enum()?;
     let struct_sql   = self.impl_struct_sql()?;
@@ -86,7 +86,7 @@ impl<'a> ImplDerive<'a> {
         }
 
         // Check that all named fields have a name (ie no tuple)
-        if ! fields_named.named.iter().fold(true, |r, f| r && f.ident.is_some()) {
+        if ! fields_named.named.iter().all(|f| f.ident.is_some()) {
           return Err(Box::new(simple_error::SimpleError::new("DeriveSql macro does not support fields with no name such as tuple")));
         }
       },
@@ -110,7 +110,7 @@ impl<'a> ImplDerive<'a> {
   }
 
   fn name_sql(&'a self) -> syn::Ident {
-    syn::Ident::new(format!("{}Sql", self.name()).as_str(), self.name().span().clone())
+    syn::Ident::new(format!("{}Sql", self.name()).as_str(), self.name().span())
   }
 
   /*
@@ -120,7 +120,7 @@ impl<'a> ImplDerive<'a> {
    *  }
    */
   fn impl_enum(&'a self) -> Result<proc_macro2::TokenStream, Box<dyn std::error::Error>> {
-    let doc = format!("This enum provides an identification of the different SQL wrapper supported");
+    let doc = "This enum provides an identification of the different SQL wrapper supported";
     let q = quote::quote! {
       #[doc = #doc]
       enum SqlConnection<'a> {
@@ -357,7 +357,7 @@ Construct a SQL connector to manipulate struct of type {} to an SQLite database 
     let fields_named = &utility::get_fields_named(self.ast).ok_or("Unable to retrieve fields named")?.named;
 
     let statement = format!("SELECT COUNT( {} ) FROM {}",
-                      fields_named.iter().nth(0).unwrap().ident.as_ref().unwrap(),
+                      fields_named.iter().next().unwrap().ident.as_ref().unwrap(),
                       self.get_table_name());
 
     let q = quote::quote! {

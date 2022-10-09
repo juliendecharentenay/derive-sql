@@ -92,9 +92,6 @@
 //!
 //! ```
 
-use proc_macro;
-use syn;
-
 mod sqltype;
 mod implderive;
 mod implfilter;

@@ -37,9 +37,9 @@ impl<'a> ImplFilter<'a> {
    *
    */
   fn impl_filter(&'a self) -> Result<proc_macro2::TokenStream, Box<dyn std::error::Error>> {
-    let doc = format!(r#"
+    let doc = r#"
 Provides ability to nominate the filtering of results as part of the database query, aka WHERE in SQL queries
-"#);
+"#;
 
     let gt = |na: &str| syn::Ident::new(&format!("{}GreaterThan", na), proc_macro2::Span::call_site());
     let ge = |na: &str| syn::Ident::new(&format!("{}GreaterEqualThan", na), proc_macro2::Span::call_site());

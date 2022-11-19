@@ -17,6 +17,7 @@
 //! struct Person {
 //!   name: String,
 //!   age: u32,
+//!   checked: bool,
 //! }
 //! ```
 //!
@@ -29,6 +30,7 @@
 //! # struct Person {
 //! #   name: String,
 //! #   age: u32,
+//! #   checked: bool,
 //! # }
 //! #
 //!
@@ -40,7 +42,7 @@
 //! person_sql.create_table().unwrap();
 //!
 //! // Insert person into SQL database
-//! let person = Person { name: "Jo".to_string(), age: 24 };
+//! let person = Person { name: "Jo".to_string(), age: 24, checked: false };
 //! person_sql.insert(&person).unwrap();
 //!
 //! // Retrieve list of persons from SQL database
@@ -50,7 +52,7 @@
 //! assert!(persons[0].name.eq("Jo"));
 //!
 //! // Insert Jane
-//! let jane = Person { name: "Jane".to_string(), age: 27 };
+//! let jane = Person { name: "Jane".to_string(), age: 27, checked: false };
 //! person_sql.insert(&jane).unwrap();
 //!
 //! // Check Jane's age
@@ -64,7 +66,7 @@
 //! // Update Jane
 //! let filter = Filter::NameEqual("Jane".to_string());
 //! let jane: Person = person_sql.select_one(filter.into()).unwrap().unwrap();
-//! let update_to_jane = Person { name: jane.name.clone(), age: jane.age+1 };
+//! let update_to_jane = Person { name: jane.name.clone(), age: jane.age+1, checked: jane.checked };
 //! person_sql.update_to(&jane, &update_to_jane).unwrap();
 //!
 //! let filter = Filter::NameEqual("Jane".to_string());

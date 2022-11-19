@@ -89,6 +89,7 @@ Provides ability to nominate the filtering of results as part of the database qu
                 match SqlType::from_type(ty) {
                   SqlType::Text => quote::quote! { Filter::#ident(v) => format!("{} {} '{}'", #name_orig, #op, v) },
                   SqlType::Integer
+                  | SqlType::Boolean
                   | SqlType::Unsupported 
                                 => quote::quote! { Filter::#ident(v) => format!("{} {} {}", #name_orig, #op, v) },
                 }

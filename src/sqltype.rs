@@ -4,6 +4,7 @@
 pub enum SqlType {
   Integer,
   Text,
+  Boolean,
   Unsupported,
 }
 
@@ -12,6 +13,7 @@ impl SqlType {
     match ty {
       syn::Type::Path(syn::TypePath { path, .. }) if path.is_ident("String") => SqlType::Text,
       syn::Type::Path(syn::TypePath { path, .. }) if path.is_ident("u32")    => SqlType::Integer,
+      syn::Type::Path(syn::TypePath { path, .. }) if path.is_ident("bool")   => SqlType::Boolean,
       _ => SqlType::Unsupported,
     }
   }
@@ -20,6 +22,7 @@ impl SqlType {
     match self {
       SqlType::Integer     => "INTEGER",
       SqlType::Text        => "TEXT",
+      SqlType::Boolean     => "BIT",
       SqlType::Unsupported => "", 
     }
   }
@@ -45,6 +48,11 @@ mod test_sql_type {
     let t = SqlType::from_type(&t);
     assert!(matches!(t, SqlType::Text));
     assert!(t.to_string().eq("TEXT"));
+    
+    let t = syn::parse_str::<syn::Type>("bool")?;
+    let t = SqlType::from_type(&t);
+    assert!(matches!(t, SqlType::Boolean));
+    assert!(t.to_string().eq("BIT"));
     
     Ok(())
   }

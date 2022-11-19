@@ -5,6 +5,7 @@ use derive_sql::DeriveSql;
 pub struct Person {
   name: String,
   age:  u32,
+  confirmed: bool,
 }
 
 #[test]
@@ -23,13 +24,14 @@ fn sample(conn: &rusqlite::Connection) -> Result<(), Box<dyn Error>> {
   db.create_table()?;
 
   // Insert person into SQL database
-  let person = Person { name: "Jo".to_string(), age: 44 };
+  let person = Person { name: "Jo".to_string(), age: 44, confirmed: true };
   db.insert(&person)?;
 
   // Retrieve list of persons from SQL database
   let persons: Vec<Person> = db.select_all()?;
   assert!(persons.len() == 1);
   assert!(persons[0].name.eq("Jo"));
+  assert!(persons[0].confirmed == true);
 
   Ok(())
 }

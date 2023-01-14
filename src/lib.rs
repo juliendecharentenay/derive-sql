@@ -93,6 +93,24 @@
 //! assert!(persons[0].name.eq("Jane"));
 //!
 //! ```
+//!
+//! ## Date & Time:
+//! DateTime is supported using the `chrono` crate. Add the feature `chrono` to this crate to active and
+//! remember to active the `chrono` feature on `rusqlite` - otherwise, expect compilation error.
+//! Using the optional `chrono` feature:
+//!
+//! ```rust
+//! # use derive_sql::DeriveSql;
+//! # #[cfg(feature = "chrono")]
+//! #[derive(DeriveSql)]
+//! struct Meeting {
+//!   start: chrono::DateTime<chrono::Local>,
+//!   subject: String,
+//! }
+//! ```
+//! Note: when running test, the above document test is not activated using running test with the command
+//! `cargo test --features chrono`.
+//!
 
 mod sqltype;
 mod implderive;

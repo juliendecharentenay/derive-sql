@@ -1,6 +1,6 @@
 [package]
 name = "derive-sql"
-version = "0.2.1"
+version = "0.3.0"
 edition = "2021"
 license = "MIT"
 description = "A Rust macro that implements methods that wraps common SQL statements"
@@ -17,6 +17,9 @@ quote        = "1"
 proc-macro2  = "1"
 simple-error = "0.2"
 convert_case = "0.6"
+chrono       = { version = "0.4", optional = true }
 
 [dev-dependencies]
-rusqlite = { version = "0.28" }
+rusqlite     = { version = "0.28", features = [ "chrono" ] }
+syn          = { version = "1", features = [ "extra-traits" ] }
+

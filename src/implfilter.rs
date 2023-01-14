@@ -88,6 +88,7 @@ Provides ability to nominate the filtering of results as part of the database qu
                 let ident = func(name.as_str());
                 match SqlType::from_type(ty) {
                   SqlType::Text => quote::quote! { Filter::#ident(v) => format!("{} {} '{}'", #name_orig, #op, v) },
+                  SqlType::DateTime => quote::quote! { Filter::#ident(v) => format!("{} {} '{}'", #name_orig, #op, v) },
                   SqlType::Integer
                   | SqlType::Boolean
                   | SqlType::Unsupported 

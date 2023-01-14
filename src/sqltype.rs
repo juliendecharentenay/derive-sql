@@ -5,6 +5,7 @@ pub enum SqlType {
   Integer,
   Text,
   Boolean,
+  DateTime,
   Unsupported,
 }
 
@@ -14,6 +15,8 @@ impl SqlType {
       syn::Type::Path(syn::TypePath { path, .. }) if path.is_ident("String") => SqlType::Text,
       syn::Type::Path(syn::TypePath { path, .. }) if path.is_ident("u32")    => SqlType::Integer,
       syn::Type::Path(syn::TypePath { path, .. }) if path.is_ident("bool")   => SqlType::Boolean,
+      syn::Type::Path(syn::TypePath { path: syn::Path { segments, .. } , .. }) 
+      if segments.last().and_then(|p| Some(p.ident == "DateTime")).unwrap_or(false) => SqlType::DateTime,
       _ => SqlType::Unsupported,
     }
   }
@@ -23,6 +26,7 @@ impl SqlType {
       SqlType::Integer     => "INTEGER",
       SqlType::Text        => "TEXT",
       SqlType::Boolean     => "BIT",
+      SqlType::DateTime    => "DATETIME",
       SqlType::Unsupported => "", 
     }
   }
@@ -54,6 +58,11 @@ mod test_sql_type {
     assert!(matches!(t, SqlType::Boolean));
     assert!(t.to_string().eq("BIT"));
     
+    let t = syn::parse_str::<syn::Type>("DateTime")?;
+    let t = SqlType::from_type(&t);
+    assert!(matches!(t, SqlType::DateTime));
+    assert!(t.to_string().eq("DATETIME"));
+
     Ok(())
   }
 }

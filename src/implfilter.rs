@@ -27,6 +27,8 @@ impl<'a> ImplFilter<'a> {
    *     FieldEqual(Field),
    *     FieldLowerEqualThan(Field),
    *     FieldLowerThan(Field),
+   *     None,
+   *     All,
    *   }
    *
    * And the associated method that takes a filter and returns
@@ -74,6 +76,8 @@ Provides ability to nominate the filtering of results as part of the database qu
       pub enum Filter {
         And(Box<Filter>, Box<Filter>),
         Or(Box<Filter>, Box<Filter>),
+        None,
+        All,
         #( #q ),*
       }
     };
@@ -105,6 +109,8 @@ Provides ability to nominate the filtering of results as part of the database qu
           match filter {
             Filter::And(a, b) => format!("({} AND {})", Filter::to_condition(a), Filter::to_condition(b)),
             Filter::Or(a, b)  => format!("({} OR  {})", Filter::to_condition(a), Filter::to_condition(b)),
+            Filter::None      => "1=0".to_string(),
+            Filter::All       => "1=1".to_string(),
             #( #q ),*
           }
         }

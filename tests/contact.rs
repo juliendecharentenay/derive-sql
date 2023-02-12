@@ -47,6 +47,10 @@ fn sample(conn: &rusqlite::Connection) -> Result<(), Box<dyn Error>> {
     println!("{}: {} / {}", contact.name, contact.phone_number, contact.email);
   }
 
+  // Check select with Filter::None and Filter::All
+  assert!(db.select(Filter::None.into())?.len() == 0);
+  assert!(db.select(Filter::All.into())?.len() == 2);
+
   // Empty all contacts
   db.delete_all()?;
   println!("Number of contact after deleting database: {}", db.count_all()?);
@@ -69,7 +73,6 @@ fn test_2_create_table_statements() -> Result<(), Box<dyn Error>> {
 
   db.delete_table()?;
   assert!(db.table_exists()? == false);
-
 
   Ok(())
 }

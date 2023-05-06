@@ -23,11 +23,11 @@ fn sample(conn: &rusqlite::Connection) -> Result<(), Box<dyn Error>> {
 
   // Insert a new contact
   let contact = Contact { name: "John Doe".to_string(), phone_number: "01223456789".to_string(), email: "john@doe.com".to_string() };
-  db.insert(&contact)?;
+  let _contact = db.insert(contact)?;
 
   // Add another contact
-  db.insert(
-    &Contact { name: "Jane Doe".to_string(), phone_number: "00000000".to_string(), email: "jane@doe.com".to_string() }
+  let _contact = db.insert(
+    Contact { name: "Jane Doe".to_string(), phone_number: "00000000".to_string(), email: "jane@doe.com".to_string() }
   )?;
 
   // Lookup John Doe's contact

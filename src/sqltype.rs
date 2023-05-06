@@ -14,6 +14,7 @@ impl SqlType {
     match ty {
       syn::Type::Path(syn::TypePath { path, .. }) if path.is_ident("String") => SqlType::Text,
       syn::Type::Path(syn::TypePath { path, .. }) if path.is_ident("u32")    => SqlType::Integer,
+      syn::Type::Path(syn::TypePath { path, .. }) if path.is_ident("usize")  => SqlType::Integer,
       syn::Type::Path(syn::TypePath { path, .. }) if path.is_ident("bool")   => SqlType::Boolean,
       syn::Type::Path(syn::TypePath { path: syn::Path { segments, .. } , .. }) 
       if segments.last().and_then(|p| Some(p.ident == "DateTime")).unwrap_or(false) => SqlType::DateTime,
@@ -43,10 +44,12 @@ mod test_sql_type {
     assert!(matches!(t, SqlType::Unsupported));
     assert!(t.to_string().eq(""));
     
-    let t = syn::parse_str::<syn::Type>("u32")?;
-    let t = SqlType::from_type(&t);
-    assert!(matches!(t, SqlType::Integer));
-    assert!(t.to_string().eq("INTEGER"));
+    for k in ["u32", "usize"] {
+      let t = syn::parse_str::<syn::Type>(k)?;
+      let t = SqlType::from_type(&t);
+      assert!(matches!(t, SqlType::Integer));
+      assert!(t.to_string().eq("INTEGER"));
+    }
     
     let t = syn::parse_str::<syn::Type>("String")?;
     let t = SqlType::from_type(&t);

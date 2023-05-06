@@ -38,6 +38,7 @@ impl<'a> ImplDerive<'a> {
     let count        = self.impl_count()?;
     let insert       = self.impl_insert()?;
     let update_to    = self.impl_update_to()?;
+    let update       = self.impl_update()?;
     let delete_all   = self.impl_delete_all()?;
     let delete       = self.impl_delete()?;
     let r = quote::quote! {
@@ -59,6 +60,7 @@ impl<'a> ImplDerive<'a> {
       #count
       #insert
       #update_to
+      #update
       #delete_all
       #delete
     };
@@ -70,10 +72,10 @@ impl<'a> ImplDerive<'a> {
     match &self.ast.data {
       syn::Data::Struct(_) => {},
       syn::Data::Enum(_) => {
-        return Err(Box::new(simple_error::SimpleError::new("DeriveSql macro is not supported for enum")));
+        return Err("DeriveSql macro is not supported for enum".into());
       },
       syn::Data::Union(_) => {
-        return Err(Box::new(simple_error::SimpleError::new("DeriveSql macro is not supported for union")));
+        return Err("DeriveSql macro is not supported for union".into());
       },
     };
 
@@ -82,19 +84,32 @@ impl<'a> ImplDerive<'a> {
       syn::Fields::Named(fields_named) => {
         // Check that have at least on named field
         if fields_named.named.is_empty() {
-          return Err(Box::new(simple_error::SimpleError::new("DeriveSql macro does not support struct with no fields")));
+          return Err("DeriveSql macro does not support struct with no fields".into());
         }
 
         // Check that all named fields have a name (ie no tuple)
         if ! fields_named.named.iter().all(|f| f.ident.is_some()) {
-          return Err(Box::new(simple_error::SimpleError::new("DeriveSql macro does not support fields with no name such as tuple")));
+          return Err("DeriveSql macro does not support fields with no name such as tuple".into());
         }
       },
       syn::Fields::Unnamed(_) => {
-        return Err(Box::new(simple_error::SimpleError::new("DeriveSql macro does not support Unnamed field such as Some(T)")));
+        return Err("DeriveSql macro does not support Unnamed field such as Some(T)".into());
       },
       syn::Fields::Unit => {
-        return Err(Box::new(simple_error::SimpleError::new("DeriveSql macro does not support Unit field such as None")));
+        return Err("DeriveSql macro does not support Unit field such as None".into());
+      },
+    }
+
+    // Validate that there no more than one named field marked with #[derive_sql(primary_key)]
+    match utility::get_fields(self.ast).ok_or("Unabl to retrieve fields")? {
+      syn::Fields::Named(fields_named) => {
+        let count = fields_named.named.iter().filter(|f| Self::field_has_primary_key(f)).count();
+        if count > 1 {
+          return Err(format!("{} fields have been marked with #[derive_sql(primary_key)]. Only 1 field is allowed to be marked as such", count).into());
+        }
+      },
+      _ => {
+        return Err("DeriveSql macro only supports Named field".into());
       },
     }
 
@@ -113,6 +128,48 @@ impl<'a> ImplDerive<'a> {
     syn::Ident::new(format!("{}Sql", self.name()).as_str(), self.name().span())
   }
 
+  fn field_has_primary_key(f: &syn::Field) -> bool {
+    Self::field_has(f, "primary_key")
+  }
+
+  fn field_has(f: &syn::Field, ident: &str) -> bool {
+    f.attrs.iter()
+    .filter(|a| a.path().get_ident().map(|i| i.eq("derive_sql")).unwrap_or(false) )
+    .filter(|a| {
+      let mut r = false;
+      a.parse_nested_meta(|meta| { r = r || meta.path.is_ident(ident); Ok(())});
+      r
+    })
+    .count() > 0
+  }
+
+  fn field_on(f: &syn::Field, ident: &str) -> Option<String> {
+    Self::get_attr(&f.attrs, ident)
+  }
+
+  fn get_attr(attrs: &Vec<syn::Attribute>, ident: &str) -> Option<String> {
+    attrs.iter()
+    .filter(|a| a.path().get_ident().map(|i| i.eq("derive_sql")).unwrap_or(false) )
+    .map(|a| {
+      let mut r = None;
+      a.parse_nested_meta(|meta| { 
+        if r.is_none() {
+          if meta.path.is_ident(ident) {
+            if let Ok(value) = meta.value() {
+              if let Ok(s) = value.parse::<syn::LitStr>() {
+                r = Some(s.value().to_string());
+              }
+            }
+          }
+        }
+        Ok(())
+      });
+      r
+    })
+    .filter(|a| a.is_some())
+    .fold(None, |acc, a| acc.or(a))
+  }
+
   /*
    * output an enum to store the SQL connection type
    *  enum SqlConnection {
@@ -125,6 +182,7 @@ impl<'a> ImplDerive<'a> {
       #[doc = #doc]
       enum SqlConnection<'a> {
         Rusqlite(&'a rusqlite::Connection),
+        RusqliteOwned(rusqlite::Connection),
       }
     };
     Ok(q)
@@ -133,7 +191,7 @@ impl<'a> ImplDerive<'a> {
   /*
    * output the AbcSql Struct:
    *  pub struct AbcSql<'a> {
-   *    connection: &'a rusqlite::Connection,
+   *    connection: SqlConnection<'a>,
    *  }
    */
   fn impl_struct_sql(&'a self) -> Result<proc_macro2::TokenStream, Box<dyn std::error::Error>> {
@@ -148,6 +206,7 @@ and manages the interaction between the software and the database
         connection: SqlConnection<'a>,
       }
     };
+
     Ok(q)
   }
 
@@ -160,7 +219,7 @@ and manages the interaction between the software and the database
     let doc = format!(r#"
 Construct a SQL connector to manipulate struct of type {} to an SQLite database using the rusqlite wrapper
 "#, self.name());
-    let q = quote::quote! {
+    let mut q = quote::quote! {
       #[doc = #doc]
       impl<'a> #name_sql<'a> {
         pub fn from_rusqlite(conn: &'a rusqlite::Connection) -> Result<#name_sql<'a>, Box<dyn std::error::Error>> {
@@ -168,6 +227,24 @@ Construct a SQL connector to manipulate struct of type {} to an SQLite database 
         }
       }
     };
+
+    if let Some(f) = Self::get_attr(&self.ast.attrs, "rusqlite_connection") {
+      let f_ident = syn::Ident::new(f.as_str(), proc_macro2::Span::call_site());
+      let doc = format!(r#"
+Construct a default SQL connector to manipulate struct of type {name_sql} to an SQLite database stored in file {f}
+"#);
+      q = quote::quote! {
+        #q
+
+        #[doc = #doc]
+        impl<'a> #name_sql<'a> {
+          pub fn from_database() -> Result<#name_sql<'a>, Box<dyn std::error::Error>> {
+            Ok( #name_sql { connection: SqlConnection::RusqliteOwned(#f_ident()?) } )
+          }
+        }
+      };
+    }
+
     Ok(q)
   }
 
@@ -198,20 +275,72 @@ Construct a SQL connector to manipulate struct of type {} to an SQLite database 
     let q = quote::quote! {
       impl<'a> #name_sql<'a> {
         pub fn delete(&self, delete: Delete) -> Result<(), Box<dyn std::error::Error>> {
-          match self.connection {
-            SqlConnection::Rusqlite(conn) => {
-              let mut statement = #statement.to_string();
-              if let Some(filter) = delete.filter {
-                statement += format!(" WHERE {}", Filter::to_condition(&filter)).as_str();
-              }
-              conn.execute(statement.as_str(), ())?;
-              Ok(())
+          let sqlite_statement = || {
+            let mut statement = #statement.to_string();
+            if let Some(filter) = &delete.filter {
+              statement += format!(" WHERE {}", Filter::to_condition(&filter)).as_str();
             }
-          }
+            statement
+          };
+          match &self.connection {
+            SqlConnection::Rusqlite(conn)      => { conn.execute(sqlite_statement().as_str(), ())?; },
+            SqlConnection::RusqliteOwned(conn) => { conn.execute(sqlite_statement().as_str(), ())?; },
+          };
+          Ok(())
         }
       }
     };
     Ok(q)
+  }
+
+  /*
+   * output the implementation of
+   *     pub fn update(&self, primary_key: &Type, value: Abc) -> Result<Abc, Box<dyn Error>>
+   *
+   * Only done if one field is marked using `#[derive_sql(primary_key)]`
+   */
+  fn impl_update(&'a self) -> Result<proc_macro2::TokenStream, Box<dyn std::error::Error>> {
+    let name     = self.name();
+    let name_sql = self.name_sql();
+    let fields_named = &utility::get_fields_named(self.ast).ok_or("Unable to retrieve fields named")?.named;
+    if let Some(primary_key) = fields_named.iter().find(|f| Self::field_has_primary_key(f)) {
+      let primary_key_ident = &primary_key.ident;
+      let primary_key_ty    = &primary_key.ty;
+      let statement = format!("UPDATE {} SET {} WHERE {}",
+                            self.get_table_name(),
+                            fields_named.iter().enumerate()
+                               .map(|(i, f)| format!("{} = ?{}", f.ident.as_ref().unwrap(), i+2))
+                               .fold(String::default(), |a, f| if a.is_empty() { f } else { a + ", " + f.as_str() }),
+                               format!("{} = ?{}", primary_key.ident.as_ref().unwrap(), 1));
+      let parameters: Vec<&syn::Ident> = fields_named.iter().map(|f| f.ident.as_ref().unwrap()).collect();
+      let updates: Vec<proc_macro2::TokenStream> = fields_named.iter()
+          .filter(|f| Self::field_on(f, "on_update").is_some() || Self::field_on(f, "on_insert_update").is_some())
+          .map(|f| {
+            let ident = &f.ident;
+            let f_ident = syn::Ident::new(Self::field_on(f, "on_update").or_else(|| Self::field_on(f, "on_insert_update")).unwrap().as_str(), proc_macro2::Span::call_site());
+            quote::quote! {
+              value.#ident = #f_ident()?;
+            }
+          }).collect();
+                         
+
+      let q = quote::quote! {
+        impl<'a> #name_sql<'a> {
+          pub fn update(&self, primary_key: #primary_key_ty, mut value: #name) -> Result<#name, Box<dyn std::error::Error>> {
+            #( #updates )*
+            value.#primary_key_ident = primary_key;
+            match &self.connection {
+              SqlConnection::Rusqlite(conn)      => { conn.execute(#statement, ( &value.#primary_key_ident, #( &value.#parameters ),* ))?; },
+              SqlConnection::RusqliteOwned(conn) => { conn.execute(#statement, ( &value.#primary_key_ident, #( &value.#parameters ),* ))?; },
+            };
+            Ok(value)
+          }
+        }
+      };
+      Ok(q)
+    } else {
+      Ok(quote::quote! { })
+    }
   }
 
   /*
@@ -236,12 +365,11 @@ Construct a SQL connector to manipulate struct of type {} to an SQLite database 
     let q = quote::quote! {
       impl<'a> #name_sql<'a> {
         pub fn update_to(&self, from: &#name, to: &#name) -> Result<(), Box<dyn std::error::Error>> {
-          match self.connection {
-            SqlConnection::Rusqlite(conn) => {
-              conn.execute(#statement, ( #( &from.#parameters ),* , #( &to.#parameters ),* ))?;
-              Ok(())
-            }
-          }
+          match &self.connection {
+            SqlConnection::Rusqlite(conn)      => { conn.execute(#statement, ( #( &from.#parameters ),* , #( &to.#parameters ),* ))?; },
+            SqlConnection::RusqliteOwned(conn) => { conn.execute(#statement, ( #( &from.#parameters ),* , #( &to.#parameters ),* ))?; },
+          };
+          Ok(())
         }
       }
     };
@@ -308,24 +436,32 @@ Construct a SQL connector to manipulate struct of type {} to an SQLite database 
     let q = quote::quote! {
       impl<'a> #name_sql<'a> {
         pub fn select(&self, select: Select) -> Result<Vec<#name>, Box<dyn std::error::Error>> {
-          match self.connection {
-            SqlConnection::Rusqlite(conn) => {
+          let sqlite_statement = || {
               let mut statement = #statement.to_string();
-              if let Some(filter) = select.filter {
+              if let Some(filter) = &select.filter {
                 statement += format!(" WHERE {}", Filter::to_condition(&filter)).as_str();
               }
-              if let Some(limit) = select.limit {
+              if let Some(limit) = &select.limit {
                 statement += format!(" LIMIT {}", limit).as_str();
               }
-              if let Some(offset) = select.offset {
+              if let Some(offset) = &select.offset {
                 statement += format!(" ORDER BY ( SELECT NULL ) OFFSET {}", offset).as_str();
               }
-              let mut s = conn.prepare(statement.as_str())?;
-              let r = s.query_map([], |r| Ok( #name { #( #fields : #fields_assignment ),* } ) )?
-                  .collect::<Result<Vec<#name>, rusqlite::Error>>()?;
-              Ok(r)
-            }
-          }
+              statement
+          };
+          let r = match &self.connection {
+            SqlConnection::Rusqlite(conn) => {
+              conn.prepare(sqlite_statement().as_str())?
+              .query_map([], |r| Ok( #name { #( #fields : #fields_assignment ),* } ) )?
+              .collect::<Result<Vec<#name>, rusqlite::Error>>()?
+            },
+            SqlConnection::RusqliteOwned(conn) => {
+              conn.prepare(sqlite_statement().as_str())?
+              .query_map([], |r| Ok( #name { #( #fields : #fields_assignment ),* } ) )?
+              .collect::<Result<Vec<#name>, rusqlite::Error>>()?
+            },
+          };
+          Ok(r)
         }
       }
     };
@@ -363,21 +499,29 @@ Construct a SQL connector to manipulate struct of type {} to an SQLite database 
     let q = quote::quote! {
       impl<'a> #name_sql<'a> {
         pub fn count(&self, count: Count) -> Result<usize, Box<dyn std::error::Error>> {
-          match self.connection {
-            SqlConnection::Rusqlite(conn) => {
+          let sqlite_statement = || {
               let mut statement = #statement.to_string();
               if let Some(filter) = count.filter {
                 statement += format!(" WHERE {}", Filter::to_condition(&filter)).as_str();
               }
-              let mut s = conn.prepare(statement.as_str())?;
-              let r = s.query_map([], |r| r.get(0))?
-                  .collect::<Result<Vec<usize>, rusqlite::Error>>()?;
-              if r.len() == 1 { 
-                Ok(r[0])
-              } else {
-                Err(format!("SELECT COUNT result is expected to have length of 1. Current result is {:?}", r).into()) 
-              }
-            }
+              statement
+          };
+          let r = match &self.connection {
+            SqlConnection::Rusqlite(conn) => {
+              conn.prepare(sqlite_statement().as_str())?
+              .query_map([], |r| r.get(0))?
+              .collect::<Result<Vec<usize>, rusqlite::Error>>()?
+            },
+            SqlConnection::RusqliteOwned(conn) => {
+              conn.prepare(sqlite_statement().as_str())?
+              .query_map([], |r| r.get(0))?
+              .collect::<Result<Vec<usize>, rusqlite::Error>>()?
+            },
+          };
+          if r.len() == 1 { 
+            Ok(r[0])
+          } else {
+            Err(format!("SELECT COUNT result is expected to have length of 1. Current result is {:?}", r).into()) 
           }
         }
       }
@@ -410,16 +554,25 @@ Construct a SQL connector to manipulate struct of type {} to an SQLite database 
     let parameters: Vec<&syn::Ident> = fields_named.iter()
                           .map(|f| f.ident.as_ref().unwrap())
                           .collect();
+    let updates: Vec<proc_macro2::TokenStream> = fields_named.iter()
+          .filter(|f| Self::field_on(f, "on_insert").is_some() || Self::field_on(f, "on_insert_update").is_some())
+          .map(|f| {
+            let ident = &f.ident;
+            let f_ident = syn::Ident::new(Self::field_on(f, "on_insert").or_else(|| Self::field_on(f, "on_insert_update")).unwrap().as_str(), proc_macro2::Span::call_site());
+            quote::quote! {
+              i.#ident = #f_ident()?;
+            }
+          }).collect();
                          
     let q = quote::quote! {
       impl<'a> #name_sql<'a> {
-        pub fn insert(&self, i: &#name) -> Result<(), Box<dyn std::error::Error>> {
-          match self.connection {
-            SqlConnection::Rusqlite(conn) => {
-              conn.execute(#statement, ( #( &i.#parameters ),* ))?;
-              Ok(())
-            }
-          }
+        pub fn insert(&self, mut i: #name) -> Result<#name, Box<dyn std::error::Error>> {
+          #( #updates )*
+          match &self.connection {
+            SqlConnection::Rusqlite(conn)      => { conn.execute(#statement, ( #( &i.#parameters ),* ))?; },
+            SqlConnection::RusqliteOwned(conn) => { conn.execute(#statement, ( #( &i.#parameters ),* ))?; },
+          };
+          Ok(i)
         }
       }
     };
@@ -437,13 +590,11 @@ Construct a SQL connector to manipulate struct of type {} to an SQLite database 
     let r = quote::quote! {
       impl<'a> #name_sql<'a> {
         pub fn table_exists(&self) -> Result<bool, Box<dyn std::error::Error>> {
-          match self.connection {
-            SqlConnection::Rusqlite(conn) => {
-              let mut s = conn.prepare(#statement)?;
-              let r = s.exists([])?;
-              Ok(r)
-            }
-          }
+          let r = match &self.connection {
+            SqlConnection::Rusqlite(conn)      => { conn.prepare(#statement)?.exists([])?  },
+            SqlConnection::RusqliteOwned(conn) => { conn.prepare(#statement)?.exists([])?  },
+          };
+          Ok(r)
         }
       }
     };
@@ -460,12 +611,11 @@ Construct a SQL connector to manipulate struct of type {} to an SQLite database 
     let r = quote::quote! {
       impl<'a> #name_sql<'a> {
         pub fn delete_table(&self) -> Result<(), Box<dyn std::error::Error>> {
-          match self.connection {
-            SqlConnection::Rusqlite(conn) => {
-              conn.execute(#statement, ())?;
-              Ok(())
-            },
+          match &self.connection {
+            SqlConnection::Rusqlite(conn)      => { conn.execute(#statement, ())?; },
+            SqlConnection::RusqliteOwned(conn) => { conn.execute(#statement, ())?; },
           }
+          Ok(())
         }
       }
     };
@@ -486,14 +636,17 @@ Construct a SQL connector to manipulate struct of type {} to an SQLite database 
       .fold(String::default(),
             |statement, field| {
               let sql_type = SqlType::from_type(&field.ty);
-              if matches!(sql_type, SqlType::Unsupported) {
-                statement
-              } else if statement.is_empty() {
-                // format!("{} {} PRIMARY KEY", field.ident.as_ref().unwrap(), SqlType::to_string(&sql_type))
-                format!("{} {}", field.ident.as_ref().unwrap(), SqlType::to_string(&sql_type))
+              let st = if matches!(sql_type, SqlType::Unsupported) {
+                "".to_string()
+              } else if Self::field_has_primary_key(&field) {
+                format!("{} {} PRIMARY KEY", field.ident.as_ref().unwrap(), SqlType::to_string(&sql_type))
               } else {
-                format!("{}, {} {}", statement, field.ident.as_ref().unwrap(), SqlType::to_string(&sql_type))
-              }
+                format!("{} {}", field.ident.as_ref().unwrap(), SqlType::to_string(&sql_type))
+              };
+
+              if statement.is_empty() { st }
+              else if st.is_empty() { statement }
+              else { format!("{statement}, {st}") }
             });
       
     let statement = format!("CREATE TABLE IF NOT EXISTS {} ( {} )", self.get_table_name(), fields_statement);
@@ -501,12 +654,11 @@ Construct a SQL connector to manipulate struct of type {} to an SQLite database 
     let q = quote::quote! {
       impl<'a> #name_sql<'a> {
         pub fn create_table(&self) -> Result<(), Box<dyn std::error::Error>> {
-          match self.connection {
-            SqlConnection::Rusqlite(conn) => {
-              conn.execute(#statement, ())?;
-              Ok(())
-            }
+          match &self.connection {
+            SqlConnection::Rusqlite(conn)      => { conn.execute(#statement, ())?; },
+            SqlConnection::RusqliteOwned(conn) => { conn.execute(#statement, ())?; },
           }
+          Ok(())
         }
       }
     };

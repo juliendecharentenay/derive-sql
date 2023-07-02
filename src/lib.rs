@@ -229,19 +229,37 @@
 //! `cargo test --features chrono`.
 //!
 
-mod sqltype;
-mod implderive;
-mod implfilter;
-mod implselect;
-mod implfilterwrapper;
-mod utility;
+mod derive_sql;
+mod derive_api;
+mod derive_wasm;
+mod input;
+mod attributes;
 
-use sqltype::SqlType;
-use implderive::ImplDerive;
-
-#[proc_macro_derive(DeriveSql, attributes(derive_sql))]
+#[proc_macro_derive(DeriveSql, attributes(derive_sql, derive_sql_api))]
 pub fn derive_sql(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-  let ast = syn::parse(input).unwrap();
-  ImplDerive { ast: &ast }.generate().unwrap().into()
+  syn::parse(input)
+  .and_then(|ast: syn::DeriveInput| {
+    let attributes: attributes::sql::Attributes = (&ast).try_into()?;
+    let mut result = quote::quote! { };
+    if ! attributes.no_sql {
+      let quote = derive_sql::DeriveSql::new(&ast)?.generate()?;
+      result = quote::quote! { #result #quote };
+    }
+
+    if attributes.provide_api {
+      let quote = derive_api::DeriveApi::try_from(&ast)?.generate()?;
+      result = quote::quote! { #result #quote };
+    }
+
+    if attributes.provide_wasm_client {
+      let quote = derive_wasm::DeriveWasm::try_from(&ast)?.generate()?;
+      result = quote::quote! { #result #quote };
+    }
+
+    Ok(result)
+  })
+  .unwrap_or_else(|e| e.into_compile_error())
+  .into()
 }
+
 

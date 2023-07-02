@@ -1,20 +1,20 @@
-use crate::utility;
-use crate::SqlType;
+// use crate::{SqlType, derive_sql, input::Input};
 use convert_case::Casing;
 
-pub struct ImplFilter<'a> {
-  pub ast: &'a syn::DeriveInput,
+use super::*;
+
+pub struct Filter<'a> {
+  ast: &'a syn::DeriveInput,
 }
 
-impl<'a> ImplFilter<'a> {
-  pub fn generate(&'a self) -> Result<proc_macro2::TokenStream, Box<dyn std::error::Error>> {
+impl<'a> Filter<'a> {
+  pub fn new(ast: &'a syn::DeriveInput) -> Filter { Filter { ast } }
+  pub fn generate(self) -> syn::parse::Result<proc_macro2::TokenStream> {
     let filter = self.impl_filter()?;
-    let from   = self.impl_from()?;
-    let q = quote::quote! {
+    // let from   = self.impl_from()?;
+    Ok(quote::quote! {
       #filter
-      #from
-    };
-    Ok(q)
+    })
   }
 
   /*
@@ -35,10 +35,10 @@ impl<'a> ImplFilter<'a> {
    * the SQL condition:
    *
    *   impl Filter {
-   *     pub fn to_condition() -> Result<String, Box<dyn Error>>
+   *     pub fn to_condition() -> syn::parse::Result<String, Box<dyn Error>>
    *
    */
-  fn impl_filter(&'a self) -> Result<proc_macro2::TokenStream, Box<dyn std::error::Error>> {
+  fn impl_filter(&'a self) -> syn::parse::Result<proc_macro2::TokenStream> {
     let doc = r#"
 Provides ability to nominate the filtering of results as part of the database query, aka WHERE in SQL queries
 "#;
@@ -49,30 +49,21 @@ Provides ability to nominate the filtering of results as part of the database qu
     let le = |na: &str| syn::Ident::new(&format!("{}LowerEqualThan", na), proc_macro2::Span::call_site());
     let lt = |na: &str| syn::Ident::new(&format!("{}LowerThan", na), proc_macro2::Span::call_site());
 
-    let f = &utility::get_fields_named(self.ast)
-       .ok_or("Unable to retrieve FieldsNamed")?
-       .named
-       .iter()
-       .filter(|field| ! matches!(SqlType::from_type(&field.ty), SqlType::Unsupported) ) // Remove unsupported field types
-       .map(|field| (&field.ty, 
-                     format!("{}", field.ident.as_ref().unwrap()).to_case(convert_case::Case::Pascal), 
-                     format!("{}", field.ident.as_ref().unwrap())) )
-       .collect::<Vec<(&syn::Type, String, String)>>();
-
+    let fields = Input::from(self.ast).fields()?;
+    let f = fields.iter()
+       .filter(|f| ! matches!(SqlType::from(*f), SqlType::Unsupported) ) // Remove unsupported field types
+       .map(|f| Ok((f.ty(), f.ident_str()?.to_case(convert_case::Case::Pascal), f.ident_str()?, SqlType::from(f))) )
+       .collect::<syn::parse::Result<Vec<(&syn::Type, String, String, SqlType)>>>()?;
     
     let q: Vec<Box<dyn Fn(&str) -> syn::Ident>> = vec![Box::new(gt), Box::new(ge), Box::new(eq), Box::new(le), Box::new(lt)];
-    let q = q
-        .iter()
-        .fold(Vec::new(), 
-          |mut acc, func| {
-            let mut r = f.iter().map(|(ty, name, _name_orig)| { let ident = func(name.as_str()); quote::quote! { #ident(#ty) } })
-            .collect::<Vec<proc_macro2::TokenStream>>();
-            acc.append(&mut r);
-            acc
-          }
-        );
+    let q = q.iter()
+        .map(|func| f.iter().map(|(ty, name, _name_orig, _sql_type)| { let ident = func(name.as_str()); quote::quote! { #ident(#ty) } })
+                    .collect::<Vec<proc_macro2::TokenStream>>()
+        ).flatten().collect::<Vec<proc_macro2::TokenStream>>();
+
     let q_enum = quote::quote! {
       #[doc = #doc]
+      #[derive(Clone)]
       pub enum Filter {
         And(Box<Filter>, Box<Filter>),
         Or(Box<Filter>, Box<Filter>),
@@ -83,30 +74,24 @@ Provides ability to nominate the filtering of results as part of the database qu
     };
 
     let q: Vec<(Box<dyn Fn(&str) -> syn::Ident>, &str)> = vec![(Box::new(gt), ">"), (Box::new(ge), ">="), (Box::new(eq), "="), (Box::new(le), "<="), (Box::new(lt), "<")];
-    let q = q
-       .iter()
-       .fold(Vec::new(),
-         |mut acc, (func, op)| {
-           let mut r = f.iter()
-             .map(|(ty, name, name_orig)| {
-                let ident = func(name.as_str());
-                match SqlType::from_type(ty) {
-                  SqlType::Text => quote::quote! { Filter::#ident(v) => format!("{} {} '{}'", #name_orig, #op, v) },
-                  SqlType::DateTime => quote::quote! { Filter::#ident(v) => format!("{} {} '{}'", #name_orig, #op, v) },
-                  SqlType::Integer
-                  | SqlType::Boolean
-                  | SqlType::Unsupported 
-                                => quote::quote! { Filter::#ident(v) => format!("{} {} {}", #name_orig, #op, v) },
-                }
-             })
-             .collect::<Vec<proc_macro2::TokenStream>>();
-           acc.append(&mut r);
-           acc
-       });
+    let q = q.iter()
+       .map(|(func, op)| 
+         f.iter().map(|(_ty, name, name_orig, sql_type)| {
+           let ident = func(name.as_str());
+           match sql_type {
+             SqlType::Text 
+             | SqlType::DateTime => quote::quote! { Filter::#ident(v) => format!("{} {} '{}'", #name_orig, #op, v) },
+             SqlType::Integer
+             | SqlType::Boolean
+             | SqlType::Unsupported => quote::quote! { Filter::#ident(v) => format!("{} {} {}", #name_orig, #op, v) },
+           }
+         }).collect::<Vec<proc_macro2::TokenStream>>()
+       ).flatten().collect::<Vec<proc_macro2::TokenStream>>();
+       
     let q_impl = quote::quote! {
       impl Filter {
-        pub fn to_condition(filter: &Filter) -> String {
-          match filter {
+        pub fn to_condition(&self) -> String {
+          match self {
             Filter::And(a, b) => format!("({} AND {})", Filter::to_condition(a), Filter::to_condition(b)),
             Filter::Or(a, b)  => format!("({} OR  {})", Filter::to_condition(a), Filter::to_condition(b)),
             Filter::None      => "1=0".to_string(),
@@ -117,24 +102,19 @@ Provides ability to nominate the filtering of results as part of the database qu
       }
     };
 
-    let q = quote::quote! {
+    Ok(quote::quote! {
       #q_enum
       #q_impl
-    };
-    Ok(q)
+    })
   }
 
-  fn impl_from(&'a self) -> Result<proc_macro2::TokenStream, Box<dyn std::error::Error>> {
-    let ident = &self.ast.ident;
-
+/*
+  fn impl_from(&'a self) -> syn::parse::Result<proc_macro2::TokenStream> {
     let eq = |na: &str| syn::Ident::new(&format!("{}Equal", na), proc_macro2::Span::call_site());
 
-    let q = utility::get_fields_named(self.ast)
-       .ok_or("Unable to retrieve FieldsNamed")?
-       .named
-       .iter()
-       .filter(|field| ! matches!(SqlType::from_type(&field.ty), SqlType::Unsupported) ) // Remove unsupported field types
-       .map(|field| {
+    let q = self.parent.fields()?.iter()
+       .filter(|f| ! matches!(f.sql_type, SqlType::Unsupported) ) // Remove unsupported field types
+       .map(|f| {
          let ident = field.ident.as_ref().unwrap();
          let filter_ident = eq(format!("{}", ident).to_case(convert_case::Case::Pascal).as_str());
          quote::quote! {
@@ -147,7 +127,7 @@ Provides ability to nominate the filtering of results as part of the database qu
            Some(o) => Some(quote::quote! { Filter::And( Box::new(#o), Box::new(#q) ) }),
          }
        })
-       .ok_or("Unable to construct filter")?;
+       .ok_or(syn::parse::Error::new(proc_macro2::Span::call_site(), "Unable to construct filter"))?;
 
     let q = quote::quote! {
       impl From<#ident> for Filter {
@@ -158,5 +138,6 @@ Provides ability to nominate the filtering of results as part of the database qu
     };
     Ok(q)
   }
+  */
 }
 

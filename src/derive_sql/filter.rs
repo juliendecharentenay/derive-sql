@@ -83,6 +83,7 @@ Provides ability to nominate the filtering of results as part of the database qu
              | SqlType::DateTime => quote::quote! { Filter::#ident(v) => format!("{} {} '{}'", #name_orig, #op, v) },
              SqlType::Integer
              | SqlType::Boolean
+             | SqlType::Float
              | SqlType::Unsupported => quote::quote! { Filter::#ident(v) => format!("{} {} {}", #name_orig, #op, v) },
            }
          }).collect::<Vec<proc_macro2::TokenStream>>()

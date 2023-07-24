@@ -25,7 +25,7 @@ impl<'a> DeriveSql<'a> {
     input.fields()?.iter()
       .map(|field| 
         if matches!(SqlType::from(field), SqlType::Unsupported) {
-          Err(syn::parse::Error::new(field.span(), "Field type is not supported"))
+          Err(syn::parse::Error::new(field.span(), "Field type is not supported by derive_sql::DeriveSql macro"))
         } else {
           Ok(())
         }

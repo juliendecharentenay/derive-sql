@@ -1,6 +1,5 @@
 //! Define data type and their conversion to SQL data type
 //!
-use super::*;
 
 pub enum SqlType {
   Integer,
@@ -11,15 +10,15 @@ pub enum SqlType {
   Unsupported,
 }
 
-impl From<&syn::Type> for SqlType {
-  fn from(t: &syn::Type) -> SqlType {
-    SqlType::from_type(t)
+impl From<&syn::Field> for SqlType {
+  fn from(f: &syn::Field) -> SqlType {
+    (&f.ty).into()
   }
 }
 
-impl From<&input::Field> for SqlType {
-  fn from(f: &input::Field) -> SqlType {
-    f.ty().into()
+impl From<&syn::Type> for SqlType {
+  fn from(t: &syn::Type) -> SqlType {
+    SqlType::from_type(t)
   }
 }
 

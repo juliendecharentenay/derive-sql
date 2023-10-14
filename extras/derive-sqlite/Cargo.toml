@@ -1,0 +1,20 @@
+[package]
+name = "derive-sqlite"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[lib]
+proc-macro = true
+
+[dependencies]
+syn = "2"
+quote = "1"
+proc-macro2 = "1"
+attribute-derive = "0.7.0"
+
+[dev-dependencies]
+# chrono = { version = "0" }
+rusqlite = { version = "0", features = [ "chrono" ] }
+derive-sql = { path = "../../derive-sql" }
+

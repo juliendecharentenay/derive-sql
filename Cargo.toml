@@ -1,26 +1,6 @@
-[package]
-name = "derive-sql"
-version = "0.5.0"
-edition = "2021"
-license = "MIT"
-description = "A Rust macro that implements methods that wraps common SQL statements"
-repository = "https://github.com/juliendecharentenay/derive-sql"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
-[lib]
-proc-macro = true
-
-[dependencies]
-syn          = "2"
-quote        = "1"
-proc-macro2  = "1"
-convert_case = "0.6"
-chrono       = { version = "0.4", optional = true }
-from-attributes = { package = "derive-sql-core-from-attributes", path = "./extras/from-attributes" }
-
-[dev-dependencies]
-rusqlite     = { version = "0.29", features = [ "chrono" ] }
-syn          = { version = "2", features = [ "extra-traits" ] }
-nanoid       = "0.4"
+[workspace]
+members = [
+  "derive-sql",
+  "extras/derive-sqlite",
+]
 

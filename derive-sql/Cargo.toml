@@ -1,0 +1,22 @@
+[package]
+name = "derive-sql"
+version = "0.5.0"
+edition = "2021"
+license = "MIT"
+description = "..."
+repository = "https://github.com/juliendecharentenay/derive-sql"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+
+[dependencies]
+derive-sqlite = { path = "../extras/derive-sqlite", optional = true }
+
+[features]
+sqlite = [ "derive-sqlite" ]
+
+[dev-dependencies]
+rusqlite = { version = "0", features = [ "chrono" ] }
+derive-sqlite = { path = "../extras/derive-sqlite" }
+

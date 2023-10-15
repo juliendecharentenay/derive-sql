@@ -23,7 +23,7 @@ fn main() {
 
 #[cfg(not(feature = "sqlite"))]
 fn main() {
-  println!("Feature `sqlite` required. Please run example using command `cargo run --example simple --feature sqlite`");
+  println!("Feature `sqlite` required. Please run example using command `cargo run --example simple --features sqlite`");
 }
 
 #[cfg(feature = "sqlite")]

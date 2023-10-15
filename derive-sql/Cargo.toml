@@ -15,6 +15,7 @@ derive-sqlite = { path = "../extras/derive-sqlite", optional = true }
 
 [features]
 sqlite = [ "derive-sqlite" ]
+with-mock = []
 
 [dev-dependencies]
 rusqlite = { version = "0", features = [ "chrono" ] }

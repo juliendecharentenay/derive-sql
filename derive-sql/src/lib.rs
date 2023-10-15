@@ -2,12 +2,12 @@
 //!
 //! The trait `Sqlable` that defines a set of operation for 
 //! interacting with SQL tables:
-//! - `create_table` to create the table;
-//! - `count` to provide a count of the number of items in the table;
-//! - `select` to return an array of the items in the table;
-//! - `insert` to insert a new item in the table;
-//! - `update` to update an existing item(s) with the values of the provided item;
+//! - `count` to provide a count of the number of items in the table.
+//! - `select` to return an array of the items in the table.
+//! - `insert` to insert a new item in the table.
+//! - `update` to update an existing item(s) with the values of the provided item.
 //! - `delete` to delete items in the table.
+//! - `delete_table` to drop the table.
 //!
 //! Implementation of the trait should allow the user of the trait to interact with the table via the above
 //! interface...

@@ -44,7 +44,7 @@ pub use selectable::SimpleOffset;
 #[cfg(feature="sqlite")]
 /// Derive macro to implement the `Sqlable` trait for a struct with named fields so that instances of the struct
 /// can be saved, queried, stored to/from an SQLite database. Uses `rusqlite`. Requires `--features sqlite`.
-pub use derive_sqlite::DeriveSqlite;
+pub use derive_sql_sqlite::DeriveSqlite;
 
 #[cfg(feature="with-mock")]
 mod mock_sqlable; 

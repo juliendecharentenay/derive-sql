@@ -3,7 +3,7 @@ name = "derive-sql"
 version = "0.5.0"
 edition = "2021"
 license = "MIT"
-description = "..."
+description = "Structure the interaction with SQL database - currently only SQLite via trait and a procedural macro"
 repository = "https://github.com/juliendecharentenay/derive-sql"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -11,13 +11,13 @@ repository = "https://github.com/juliendecharentenay/derive-sql"
 [lib]
 
 [dependencies]
-derive-sqlite = { path = "../extras/derive-sqlite", optional = true }
+derive-sql-sqlite = { path = "../extras/derive-sql-sqlite", optional = true }
 
 [features]
-sqlite = [ "derive-sqlite" ]
+sqlite = [ "derive-sql-sqlite" ]
 with-mock = []
 
 [dev-dependencies]
 rusqlite = { version = "0", features = [ "chrono" ] }
-derive-sqlite = { path = "../extras/derive-sqlite" }
+derive-sql-sqlite = { path = "../extras/derive-sql-sqlite" }
 

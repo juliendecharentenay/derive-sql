@@ -2,6 +2,6 @@
 resolver = "2"
 members = [
   "derive-sql",
-  "extras/derive-sqlite",
+  "extras/derive-sql-sqlite",
 ]
 

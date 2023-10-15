@@ -6,7 +6,7 @@
 //! You write:
 //! ```rust
 //! # use derive_sql::*;
-//! # use derive_sqlite::DeriveSqlite;
+//! # use derive_sql_sqlite::DeriveSqlite;
 //! #[derive(DeriveSqlite)]
 //! pub struct Person {
 //!   name: String,
@@ -17,7 +17,7 @@
 //! And you can use:
 //! ```rust
 //! # use derive_sql::*;
-//! # use derive_sqlite::DeriveSqlite;
+//! # use derive_sql_sqlite::DeriveSqlite;
 //! # #[derive(DeriveSqlite)]
 //! # pub struct Person {
 //! #   name: String,

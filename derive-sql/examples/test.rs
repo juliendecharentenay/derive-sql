@@ -1,6 +1,7 @@
 //! Example showing the use of the provided `SqlableTest` struct. A struct implementing `Sqlable` that can be used for testing purposes.
 //! Run with `cargo run --example test --features with-mock`
 //!
+#[cfg(feature = "with-mock")]
 use derive_sql::Sqlable;
 
 #[cfg(not(feature = "with-mock"))]

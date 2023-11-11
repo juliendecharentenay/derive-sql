@@ -11,15 +11,14 @@ repository = "https://github.com/juliendecharentenay/derive-sql"
 [lib]
 
 [dependencies]
-# derive-sql-sqlite = { path = "../extras/derive-sql-sqlite", optional = true }
 derive-sql-sqlite = { version = "0", optional = true }
 
 [features]
+default = [ ]
 sqlite = [ "derive-sql-sqlite" ]
-with-mock = []
+
+[package.metadata.docs.rs]
+features = [ "sqlite" ]
 
 [dev-dependencies]
-rusqlite = { version = "0", features = [ "chrono" ] }
-# derive-sql-sqlite = { path = "../extras/derive-sql-sqlite" }
-derive-sql-sqlite = { version = "0" }
-
+mockall = { version = "0" }

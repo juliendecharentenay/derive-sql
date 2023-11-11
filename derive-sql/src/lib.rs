@@ -24,7 +24,49 @@
 //!
 //! # Features:
 //! - `sqlite` provide a derive macro to implement the `Sqlable` trait for SQLite database (implemented as a wrapper around the `rusqlite` crate);
-//!  - `with-mock` provide a `MockSqlable` implementation of the `Sqlable` trait to use in testing. 
+//!
+//! # Mocking:
+//! The example of code below shows how the trait can be mocked using `mockall` for unit testing purposes. The
+//! example uses `mockall` external trait functionality - ie works in a code using this crate as a dependency.
+//! Note: one has to explicitely nominates the associated type in the method definitions.
+//!
+//! ```rust
+//! mockall::mock! {
+//!   SqlableStruct {}
+//!   impl derive_sql::Sqlable for SqlableStruct {
+//!     type Item = String;
+//!     type Error = Box<dyn std::error::Error>;
+//!     type Selector = ();
+//!     
+//!     fn count(&self, s: ()) -> Result<usize, Box<dyn std::error::Error>>;
+//!     fn select(&self, s: ()) -> Result<Vec<String>, Box<dyn std::error::Error>>;
+//!     fn insert(&mut self, item: String) -> Result<String, Box<dyn std::error::Error>>;
+//!     fn update(&mut self, s: (), item: String) -> Result<String, Box<dyn std::error::Error>>;
+//!     fn delete(&mut self, s: ()) -> Result<(), Box<dyn std::error::Error>>;
+//!     fn delete_table(&mut self) -> Result<(), Box<dyn std::error::Error>>;
+//!   }
+//! }
+//!
+//! fn my_function<S>(s: &mut S) -> Result<usize, Box<dyn std::error::Error>> 
+//! where S: derive_sql::Sqlable<Selector = (), Item = String, Error = Box<dyn std::error::Error>>,
+//! {
+//!   let _ = s.insert("an item".to_string())?;
+//!   Ok(s.count(())?)
+//! }
+//!
+//! // Create mock
+//! let mut mock = MockSqlableStruct::new();
+//! // Configure mock
+//! mock.expect_insert()
+//! .with(mockall::predicate::eq("an item".to_string()))
+//! .returning(|s| Ok(s));
+//! mock.expect_count().returning(|_| Ok(11));
+//!
+//! // Check result
+//! assert!(matches!(my_function(&mut mock), Ok(11)));
+//!
+//! ```
+//! 
 //!
 
 mod sqlable; pub use sqlable::Sqlable;
@@ -45,12 +87,5 @@ pub use selectable::SimpleOffset;
 /// Derive macro to implement the `Sqlable` trait for a struct with named fields so that instances of the struct
 /// can be saved, queried, stored to/from an SQLite database. Uses `rusqlite`. Requires `--features sqlite`.
 pub use derive_sql_sqlite::DeriveSqlite;
-
-#[cfg(feature="with-mock")]
-mod mock_sqlable; 
-
-#[cfg(feature="with-mock")]
-/// Convenience testing struct implementing `Sqlable` trait. Requires `--features with-mock`.
-pub use mock_sqlable::MockSqlable;
 
 

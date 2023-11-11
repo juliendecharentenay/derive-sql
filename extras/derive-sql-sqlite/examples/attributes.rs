@@ -3,9 +3,8 @@
 //!
 use derive_sql::{Sqlable, SimpleFilter, SimpleLimit};
 
-#[cfg(feature = "sqlite")]
 #[derive(Debug)]
-#[derive(derive_sql::DeriveSqlite)]
+#[derive(derive_sql_sqlite::DeriveSqlite)]
 #[derive_sqlite(ident = PersonSql)]        // Use the nominated name for the SQLite wrapper structure (default: PersonSqlite)
 #[derive_sqlite(table_name = "person_v1")] // Use the nominated name for the SQLite table (default: person)
 struct Person {
@@ -20,7 +19,6 @@ struct Person {
 fn set_age_on_insert() -> u32 { 33 }
 fn set_age_on_update() -> u32 { 26 }
 
-#[cfg(feature = "sqlite")]
 fn main() {
   let conn = rusqlite::Connection::open_in_memory().unwrap();
   if let Err(e) = sample(conn) {
@@ -29,12 +27,6 @@ fn main() {
   }
 }
 
-#[cfg(not(feature = "sqlite"))]
-fn main() {
-  println!("Feature `sqlite` required. Please run example using command `cargo run --example attributes --features sqlite`");
-}
-
-#[cfg(feature = "sqlite")]
 fn sample(conn: rusqlite::Connection) -> Result<(), Box<dyn std::error::Error>> {
   let mut db: PersonSql = conn.into();
 

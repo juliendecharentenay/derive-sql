@@ -40,7 +40,13 @@ And use the generated functions:
 * Review the documentation pages;
 * Generate documentation for the generated functions using `cargo doc --open`
 
-Checkout the example tests using in-memory SQLite database in the `derive-sql/examples` folder.
+Checkout the example tests using in-memory SQLite database in the `extras/derive-sql-sqlite/examples` folder:
+```
+cargo run --example simple
+cargo run --example attributes
+```
+
+
 
 # License
 This project is licensed under [MIT license](LICENSE).

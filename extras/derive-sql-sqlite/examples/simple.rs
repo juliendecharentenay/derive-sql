@@ -3,16 +3,14 @@
 //!
 use derive_sql::{Sqlable, SimpleFilter, SimpleLimit, SimpleOffset};
 
-#[cfg(feature = "sqlite")]
 #[derive(Debug)]
-#[derive(derive_sql::DeriveSqlite)]
+#[derive(derive_sql_sqlite::DeriveSqlite)]
 struct Person {
   name: String,
   age: u32,
   active: bool,
 }
 
-#[cfg(feature = "sqlite")]
 fn main() {
   let conn = rusqlite::Connection::open_in_memory().unwrap();
   if let Err(e) = sample(conn) {
@@ -21,12 +19,6 @@ fn main() {
   }
 }
 
-#[cfg(not(feature = "sqlite"))]
-fn main() {
-  println!("Feature `sqlite` required. Please run example using command `cargo run --example simple --features sqlite`");
-}
-
-#[cfg(feature = "sqlite")]
 fn sample(conn: rusqlite::Connection) -> Result<(), Box<dyn std::error::Error>> {
   let mut db: PersonSqlite = conn.into();
 

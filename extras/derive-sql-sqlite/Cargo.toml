@@ -1,6 +1,6 @@
 [package]
 name = "derive-sql-sqlite"
-version = "0.5.0"
+version = "0.6.0"
 edition = "2021"
 license = "MIT"
 description = "Accompany the `derive-sql` crate. Implements the `DeriveSqlite` procedural macro to implement trait for SQLite"

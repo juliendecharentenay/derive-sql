@@ -14,6 +14,7 @@ impl Selectable for SimpleOffset {
   fn filter(&self) -> Option<String> { self.next.as_ref().and_then(|n| n.filter()) }
   fn limit(&self) -> Option<usize> { self.limit.as_ref().cloned() }
   fn offset(&self) -> Option<usize> { self.offset.as_ref().cloned() }
+  fn order_by(&self) -> Option<String> { self.next.as_ref().and_then(|n| n.order_by()) }
 }
 
 impl std::convert::TryFrom<()> for SimpleOffset {

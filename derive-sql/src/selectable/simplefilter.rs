@@ -26,6 +26,7 @@ impl Selectable for SimpleFilter {
   }
   fn limit(&self) -> Option<usize> { self.next.as_ref().and_then(|n| n.limit()) }
   fn offset(&self) -> Option<usize> { self.next.as_ref().and_then(|n| n.offset()) }
+  fn order_by(&self) -> Option<String> { self.next.as_ref().and_then(|n| n.order_by()) }
 }
 
 impl std::convert::TryFrom<()> for SimpleFilter {

@@ -80,8 +80,11 @@ pub use selectable::SimpleFilter;
 /// Convenient struct for implementing a limit, ie a struct that generates the content of a `LIMIT value` clause
 pub use selectable::SimpleLimit;
 
-/// Convenient struct for implementing am offset, ie a struct that generates the content of an `OFFSET value` clause
+/// Convenient struct for implementing an offset, ie a struct that generates the content of an `OFFSET value` clause
 pub use selectable::SimpleOffset;
+
+/// Convenient struct for implementing an order by, ie a struct that generates the content of an `ORDER BY value ASC|DESC` clause
+pub use selectable::{SimpleOrder, Order};
 
 #[cfg(feature="sqlite")]
 /// Derive macro to implement the `Sqlable` trait for a struct with named fields so that instances of the struct

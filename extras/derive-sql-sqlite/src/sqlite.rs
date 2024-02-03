@@ -69,7 +69,7 @@ impl<'a> Sqlite<'a> {
       );
       quote::quote! {
         #[doc = #doc]
-        fn create_table(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+        pub fn create_table(&mut self) -> Result<(), Box<dyn std::error::Error>> {
           let stmt = format!("{}", #statement);
           self.conn.execute(stmt.as_str(), ())?;
           Ok(())

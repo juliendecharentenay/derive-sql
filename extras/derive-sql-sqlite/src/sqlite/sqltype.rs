@@ -7,6 +7,7 @@ pub enum SqlType {
   Boolean,
   Float,
   DateTime,
+  Date,
   Unsupported,
 }
 
@@ -26,12 +27,15 @@ impl SqlType {
   pub fn from_type(ty: &syn::Type) -> SqlType {
     match ty {
       syn::Type::Path(syn::TypePath { path, .. }) if path.is_ident("String") => SqlType::Text,
+      syn::Type::Path(syn::TypePath { path, .. }) if path.is_ident("i32")    => SqlType::Integer,
       syn::Type::Path(syn::TypePath { path, .. }) if path.is_ident("u32")    => SqlType::Integer,
       syn::Type::Path(syn::TypePath { path, .. }) if path.is_ident("usize")  => SqlType::Integer,
       syn::Type::Path(syn::TypePath { path, .. }) if path.is_ident("bool")   => SqlType::Boolean,
       syn::Type::Path(syn::TypePath { path, .. }) if path.is_ident("f32")    => SqlType::Float,
       syn::Type::Path(syn::TypePath { path: syn::Path { segments, .. } , .. }) 
       if segments.last().and_then(|p| Some(p.ident == "DateTime")).unwrap_or(false) => SqlType::DateTime,
+      syn::Type::Path(syn::TypePath { path: syn::Path { segments, .. } , .. }) 
+      if segments.last().and_then(|p| Some(p.ident == "NaiveDate")).unwrap_or(false) => SqlType::Date,
       _ => SqlType::Unsupported,
     }
   }
@@ -43,6 +47,7 @@ impl SqlType {
       SqlType::Boolean     => "BIT",
       SqlType::Float       => "FLOAT",
       SqlType::DateTime    => "DATETIME",
+      SqlType::Date        => "DATE",
       SqlType::Unsupported => "", 
     }
   }
@@ -59,7 +64,7 @@ mod test_sql_type {
     assert!(matches!(t, SqlType::Unsupported));
     assert!(t.to_string().eq(""));
     
-    for k in ["u32", "usize"] {
+    for k in ["u32", "usize", "i32"] {
       let t = syn::parse_str::<syn::Type>(k)?;
       let t = SqlType::from_type(&t);
       assert!(matches!(t, SqlType::Integer));
@@ -85,6 +90,11 @@ mod test_sql_type {
     let t = SqlType::from_type(&t);
     assert!(matches!(t, SqlType::DateTime));
     assert!(t.to_string().eq("DATETIME"));
+
+    let t = syn::parse_str::<syn::Type>("NaiveDate")?;
+    let t = SqlType::from_type(&t);
+    assert!(matches!(t, SqlType::Date));
+    assert!(t.to_string().eq("DATE"));
 
     Ok(())
   }

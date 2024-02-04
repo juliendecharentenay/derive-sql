@@ -42,10 +42,9 @@ And use the generated functions:
 
 Checkout the example tests using in-memory SQLite database in the `extras/derive-sql-sqlite/examples` folder:
 ```
-cargo run --example simple
-cargo run --example attributes
+cargo run --example simple --features sqlite
+cargo run --example attributes --features sqlite
 ```
-
 
 
 # License

@@ -1,6 +1,6 @@
 [package]
 name = "derive-sql-mysql"
-version = "0.6.0"
+version = "0.7.0"
 edition = "2021"
 license = "MIT"
 description = "Accompany the `derive-sql` crate. Implements the `DeriveMySql` procedural macro to implement trait for MySQL"
@@ -17,7 +17,7 @@ proc-macro2 = "1"
 attribute-derive = "0"
 
 [dev-dependencies]
-# derive-sql = { version = "0" }
-derive-sql = { path = "../../derive-sql" }
-mysql = { version = "24" } # , features = [ "default-rustls" ] }
+derive-sql = { version = "0" }
+## derive-sql = { path = "../../derive-sql" }
+mysql = { version = "24" }
 

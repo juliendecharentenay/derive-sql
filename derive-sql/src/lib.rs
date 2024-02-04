@@ -91,4 +91,8 @@ pub use selectable::{SimpleOrder, Order};
 /// can be saved, queried, stored to/from an SQLite database. Uses `rusqlite`. Requires `--features sqlite`.
 pub use derive_sql_sqlite::DeriveSqlite;
 
+#[cfg(feature="mysql")]
+/// Derive macro to implement the `Sqlable` trait for a struct with named fields so that instances of the struct
+/// can be saved, queried, stored to/from a MySQL database. Uses `mysql`. Requires `--features mysql`.
+pub use derive_sql_mysql::DeriveMysql;
 

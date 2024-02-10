@@ -7,8 +7,8 @@
 //! You write:
 //! ```rust
 //! # use derive_sql::*;
-//! # use derive_sql_mysql::DeriveMySql;
-//! #[derive(DeriveMySql)]
+//! # use derive_sql_mysql::DeriveMysql;
+//! #[derive(DeriveMysql)]
 //! pub struct Person {
 //!   name: String,
 //!   age: u32,
@@ -18,16 +18,16 @@
 //! And you can use:
 //! ```rust
 //! # use derive_sql::*;
-//! # use derive_sql_mysql::DeriveMySql;
-//! # #[derive(DeriveMySql)]
+//! # use derive_sql_mysql::DeriveMysql;
+//! # #[derive(DeriveMysql)]
 //! # pub struct Person {
 //! #   name: String,
 //! #   age: u32,
 //! # }
 //!
-//! let pool = mysql::Pool::new("mysql::/localhost/persondb").unwrap();
-//! let mut connection = pool.get_conn()?;
-//! let mut db: PersonMysql = connection.into();
+//! let pool = mysql::Pool::new("mysql://test@localhost/simpledb").unwrap();
+//! let mut connection = pool.get_conn().unwrap();
+//! let mut db: PersonMysql<_> = connection.into();
 //!
 //! // initialise
 //! db.create_table().unwrap();
@@ -57,7 +57,20 @@
 //!
 //! # Field attributes:
 //! - `#[derive_sqlite(is_primary_key = true)]` nominate that one of the field is a primary key. Only one primary key can be specified.
-//! primary key fields are unique in the table. WARNING/LIMITATION: !!! primary key can NOT be a String !!!!
+//! primary key fields are unique in the table. Primary key can NOT be a String - the following will not compile:
+//!
+//! ```compile_fail
+//! # use derive_sql::*;
+//! # use derive_sql_mysql::DeriveMysql;
+//! #[derive(DeriveMysql)]
+//! pub struct Person {
+//!   #[derive_sqlite(is_primary_key = true)]
+//!   name: String,
+//!   age: u32,
+//! }
+//! ```
+//!
+//!
 //! - `#[derive_sqlite(on_insert = ...)]` nominate a function of the type `fn() -> {type}` with `{type}` corresponding to the type of the 
 //! field. The function is called when the item is inserted and the value returned by the function is assigned to the field before the
 //! item is inserted. Typical use is to assign a creation date.
@@ -77,6 +90,7 @@ struct Attrs {
   table_name: Option<String>,
 }
 
+/*
 #[derive(Attribute)]
 #[attribute(ident = derive_sqlite)]
 struct FieldAttrs {
@@ -85,6 +99,7 @@ struct FieldAttrs {
   on_insert: Option<syn::PatPath>,
   on_update: Option<syn::PatPath>,
 }
+*/
 
 #[proc_macro_derive(DeriveMysql, attributes(derive_sqlite))]
 pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {

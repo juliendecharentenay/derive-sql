@@ -1,5 +1,18 @@
 use super::*;
 
+use attribute_derive::{Attribute};
+
+#[derive(Attribute)]
+#[attribute(ident = derive_sqlite)]
+struct FieldAttrs {
+  #[attribute(default = false)]
+  is_primary_key: bool,
+  #[attribute(default = false)]
+  is_unique: bool,
+  on_insert: Option<syn::PatPath>,
+  on_update: Option<syn::PatPath>,
+}
+
 pub struct Fields<'a> {
   ident: &'a syn::Ident,
   sql_type: SqlType,
@@ -26,6 +39,7 @@ impl<'a> Fields<'a> {
   pub fn ident(&'a self) -> &'a syn::Ident { self.ident }
   pub fn sql_type(&'a self) -> &'a SqlType { &self.sql_type }
   pub fn is_primary_key(&'a self) -> bool { self.attrs.is_primary_key }
+  pub fn is_unique(&self) -> bool { self.attrs.is_unique }
   pub fn on_insert(&'a self) -> &'a Option<syn::PatPath> { &self.attrs.on_insert }
   pub fn on_update(&'a self) -> &'a Option<syn::PatPath> { &self.attrs.on_update }
 }

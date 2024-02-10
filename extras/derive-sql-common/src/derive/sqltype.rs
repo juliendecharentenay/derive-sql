@@ -44,7 +44,7 @@ impl SqlType {
     match self {
       SqlType::Integer     => "INTEGER",
       SqlType::Text        => "TEXT",
-      SqlType::Boolean     => "BOOL",
+      SqlType::Boolean     => "BOOL", // "BIT",
       SqlType::Float       => "FLOAT",
       SqlType::DateTime    => "DATETIME",
       SqlType::Date        => "DATE",
@@ -79,7 +79,7 @@ mod test_sql_type {
     let t = syn::parse_str::<syn::Type>("bool")?;
     let t = SqlType::from_type(&t);
     assert!(matches!(t, SqlType::Boolean));
-    assert!(t.to_string().eq("BIT"));
+    assert!(t.to_string().eq("BOOL"));
 
     let t = syn::parse_str::<syn::Type>("f32")?;
     let t = SqlType::from_type(&t);

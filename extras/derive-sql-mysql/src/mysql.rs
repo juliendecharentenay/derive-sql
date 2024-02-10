@@ -1,7 +1,6 @@
 use super::*;
-
-mod fields;
-mod sqltype; pub use sqltype::SqlType;
+use derive_sql_common::derive::fields;
+use derive_sql_common::derive::SqlType;
 
 pub struct Mysql<'a> {
   ast: &'a syn::DeriveInput,
@@ -31,12 +30,20 @@ impl<'a> Mysql<'a> {
       .map(|f| f.try_into().map_err(|e| syn::Error::new(ident.span(), format!("{e}"))))
       .collect::<Result<Vec<fields::Fields>, syn::Error>>()?;
 
+    // Primary key of SQL type TEXT is not supported
+    if let Some(name) = fields.iter().fold(None, |r, f| r.or_else(|| if f.is_primary_key() && matches!(f.sql_type(), SqlType::Text) { Some(f.name()) } else { None })) {
+      return Err(syn::Error::new(self.ast.ident.span(), format!("Field `{name}` error: Use of String/TEXT primary key is not supported in `derive-sql` feature `MySQL`.")));
+    }
+
+
     let declaration = {
       let doc = format!("Wrapper struct to query item of type `{ident}` from MySQL database using `mysql` crate");
       quote::quote! {
         #[doc = #doc]
-        #vis struct #mysql_ident { 
-          conn: std::cell::RefCell<mysql::Conn>,
+        #vis struct #mysql_ident<T>
+        where T: mysql::prelude::Queryable
+        { 
+          conn: std::cell::RefCell<T>,
         }
       }
     };
@@ -44,9 +51,11 @@ impl<'a> Mysql<'a> {
     let from_mysql_impl = {
       let doc = format!("Create a new instance from a `mysql` connection");
       quote::quote! {
-        impl std::convert::From<mysql::Conn> for #mysql_ident {
+        impl<T> std::convert::From<T> for #mysql_ident<T>
+        where T: mysql::prelude::Queryable
+        {
           #[doc = #doc]
-          fn from(conn: mysql::Conn) -> Self { #mysql_ident { conn: std::cell::RefCell::new(conn) } }
+          fn from(conn: T) -> Self { #mysql_ident { conn: std::cell::RefCell::new(conn) } }
         }
       }
     };
@@ -59,11 +68,14 @@ impl<'a> Mysql<'a> {
           .map(|f| {
             let ident = f.ident();
             let sql_type = f.sql_type().to_string();
-            Ok(format!("{ident} {sql_type}"))
+            Ok(format!("`{ident}` {sql_type}"))
           })
           .collect::<syn::parse::Result<Vec<String>>>()?;
           if let Some(primary_key) = fields.iter().fold(None, |r, f| r.or_else(|| if f.is_primary_key() { Some(f) } else { None })) {
-            a.push(format!("PRIMARY KEY ( {} )", primary_key.ident()));
+            a.push(format!("PRIMARY KEY ( `{}` )", primary_key.ident()));
+          }
+          for f in fields.iter().filter(|f| f.is_unique()) {
+            a.push(format!("CONSTRAINT {0}_unique UNIQUE ( `{0}` )", f.ident()));
           }
           a.join(", ")
         }
@@ -96,7 +108,7 @@ impl<'a> Mysql<'a> {
     let select = {
       let doc = format!("Retrieve a list of `{ident}` items matching the selector parameter from database table `{table_name}`");
       let statement = format!("SELECT {} FROM {table_name}",
-        fields.iter().map(|f| f.name()).collect::<Vec<String>>().join(", ")
+        fields.iter().map(|f| format!("`{}`",f.name())).collect::<Vec<String>>().join(", ")
       );
       let assignements = fields.iter().enumerate()
         .map(|(i, f)| {
@@ -114,11 +126,6 @@ impl<'a> Mysql<'a> {
         fn select(&self, select: Self::Selector) -> Result<Vec<Self::Item>, Self::Error> {
           use mysql::prelude::Queryable;
           let stmt = format!("{} {}", #statement, select.statement());
-          /*
-          let r = self.conn.borrow_mut().query_map(stmt.as_str(), 
-            |( #( #fields ),* )| #ident { #( #fields ),* }
-          )?;
-          */
           let r = self.conn.borrow_mut().query_map(stmt.as_str(), 
             |r: mysql::Row| Ok( #ident { #( #fields: #assignements ),* } )
           )?
@@ -138,7 +145,7 @@ impl<'a> Mysql<'a> {
         })
         .collect::<Vec<proc_macro2::TokenStream>>();
       let statement = format!("INSERT INTO {table_name} ({}) VALUES ({})",
-        fields.iter().map(|f| f.name()).collect::<Vec<String>>().join(", "),
+        fields.iter().map(|f| format!("`{}`",f.name())).collect::<Vec<String>>().join(", "),
         fields.iter().map(|f| format!(":{}", f.name())).collect::<Vec<String>>().join(", "),
       );
       let names  = fields.iter().map(|f| f.name()).collect::<Vec<String>>();
@@ -169,7 +176,7 @@ impl<'a> Mysql<'a> {
         .collect::<Vec<proc_macro2::TokenStream>>();
       let statement = format!("UPDATE {table_name} SET {}",
         fields.iter()
-        .map(|f| format!("{} = :{}", f.ident(), f.name()))
+        .map(|f| format!("`{}` = :{}", f.ident(), f.name()))
         .collect::<Vec<String>>().join(", ")
       );
       let names  = fields.iter().map(|f| f.name()).collect::<Vec<String>>();
@@ -222,11 +229,15 @@ impl<'a> Mysql<'a> {
       #declaration
       #from_mysql_impl
 
-      impl #mysql_ident {
+      impl<T> #mysql_ident<T>
+      where T: mysql::prelude::Queryable 
+      {
         #create_table
       }
 
-      impl derive_sql::Sqlable for #mysql_ident {
+      impl<T> derive_sql::Sqlable for #mysql_ident<T>
+      where T: mysql::prelude::Queryable
+      {
         type Item = #ident;
         type Error = Box<dyn std::error::Error>;
         type Selector = Box<dyn derive_sql::Selectable>;

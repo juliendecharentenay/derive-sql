@@ -46,6 +46,13 @@ cargo run --example simple --features sqlite
 cargo run --example attributes --features sqlite
 ```
 
+Checkout the example tests using a MySQL database in the `extras/derive-sql-mysql/examples` folder:
+```
+cargo run --example simple_mysql --features mysql
+cargo run --example attributes_mysql --features mysql
+```
+
+
 
 # License
 This project is licensed under [MIT license](LICENSE).

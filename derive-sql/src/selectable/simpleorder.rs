@@ -23,8 +23,8 @@ impl Selectable for SimpleOrder {
     self.order.as_ref()
     .map(|(k, o)|
       match o {
-        Order::Ascending  => format!("{k} ASC"),
-        Order::Descending => format!("{k} DESC"),
+        Order::Ascending  => format!("`{k}` ASC"),
+        Order::Descending => format!("`{k}` DESC"),
       }
     )
   }

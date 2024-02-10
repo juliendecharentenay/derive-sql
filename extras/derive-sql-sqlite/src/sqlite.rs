@@ -1,7 +1,5 @@
 use super::*;
-
-mod fields;
-mod sqltype; pub use sqltype::SqlType;
+use derive_sql_common::derive::fields;
 
 pub struct Sqlite<'a> {
   ast: &'a syn::DeriveInput,
@@ -58,10 +56,11 @@ impl<'a> Sqlite<'a> {
         .map(|f| {
           let ident = f.ident();
           let sql_type = f.sql_type().to_string();
-          if f.is_primary_key() {
-            Ok(format!("{ident} {sql_type} PRIMARY KEY"))
-          } else {
-            Ok(format!("{ident} {sql_type}"))
+          match (f.is_primary_key(), f.is_unique()) {
+            (true, true)   => Ok(format!("{ident} {sql_type} PRIMARY KEY UNIQUE")),
+            (false, true)  => Ok(format!("{ident} {sql_type} UNIQUE")),
+            (true, false)  => Ok(format!("{ident} {sql_type} PRIMARY KEY")),
+            (false, false) => Ok(format!("{ident} {sql_type}")),
           }
         })
         .collect::<syn::parse::Result<Vec<String>>>()?

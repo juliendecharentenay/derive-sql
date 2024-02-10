@@ -22,7 +22,7 @@ fn main() {
 }
 
 fn sample(conn: mysql::Conn) -> Result<(), Box<dyn std::error::Error>> {
-  let mut db: PersonMysql = conn.into();
+  let mut db: PersonMysql<_> = conn.into();
 
   // Create Table in SQLite database
   println!("Create table");

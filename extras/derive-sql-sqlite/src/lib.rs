@@ -75,15 +75,6 @@ struct Attrs {
   table_name: Option<String>,
 }
 
-#[derive(Attribute)]
-#[attribute(ident = derive_sqlite)]
-struct FieldAttrs {
-  #[attribute(default = false)]
-  is_primary_key: bool,
-  on_insert: Option<syn::PatPath>,
-  on_update: Option<syn::PatPath>,
-}
-
 #[proc_macro_derive(DeriveSqlite, attributes(derive_sqlite))]
 pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
   syn::parse(input)

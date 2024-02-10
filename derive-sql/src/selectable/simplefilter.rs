@@ -19,8 +19,8 @@ impl Selectable for SimpleFilter {
     self.filter.as_ref()
     .map(|(k, v)| 
       match v {
-        Value::ValueStr(v) => format!("{k} = '{v}'"),
-        Value::ValueU32(v) => format!("{k} = {v}"),
+        Value::ValueStr(v) => format!("`{k}` = '{v}'"),
+        Value::ValueU32(v) => format!("`{k}` = {v}"),
       }
     )
   }

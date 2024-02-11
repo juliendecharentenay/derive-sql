@@ -33,8 +33,10 @@ impl<'a> Sqlite<'a> {
       let doc = format!("Wrapper struct to query item of type `{ident}` from SQLite database using `rusqlite` library");
       quote::quote! {
         #[doc = #doc]
-        #vis struct #sqlite_ident { 
-          conn: rusqlite::Connection,
+        #vis struct #sqlite_ident <T>
+        where T: derive_sql::sqlite::SqliteTrait 
+        { 
+          conn: T,
         }
       }
     };
@@ -42,9 +44,22 @@ impl<'a> Sqlite<'a> {
     let from_rusqlite_impl = {
       let doc = format!("Create a new instance from a `rusqlite` connection");
       quote::quote! {
-        impl std::convert::From<rusqlite::Connection> for #sqlite_ident {
+        impl std::convert::From<rusqlite::Connection> for #sqlite_ident <derive_sql::sqlite::Conn>
+        {
           #[doc = #doc]
-          fn from(v: rusqlite::Connection) -> Self { #sqlite_ident { conn: v } }
+          fn from(v: rusqlite::Connection) -> Self { #sqlite_ident { conn: derive_sql::sqlite::Conn::from(v) } }
+        }
+      }
+    };
+
+    let from_sqlite_trait_impl = {
+      let doc = format!("Create a new instance from a connection implementing `SqliteTrait`");
+      quote::quote! {
+        impl<T> std::convert::From<T> for #sqlite_ident <T>
+        where T: derive_sql::sqlite::SqliteTrait
+        {
+          #[doc = #doc]
+          fn from(conn: T) -> Self { #sqlite_ident { conn } }
         }
       }
     };
@@ -83,8 +98,7 @@ impl<'a> Sqlite<'a> {
         #[doc = #doc]
         fn count(&self, select: Self::Selector) -> Result<usize, Self::Error> {
           let stmt = format!("{} {}", #statement, select.statement());
-          let r = self.conn.prepare(stmt.as_str())?
-          .query_row([], |r| r.get(0))?;
+          let r = self.conn.query_first(stmt.as_str(), [], |r| r.get(0))?;
           Ok(r)
         }
       }
@@ -101,9 +115,7 @@ impl<'a> Sqlite<'a> {
         #[doc = #doc]
         fn select(&self, select: Self::Selector) -> Result<Vec<Self::Item>, Self::Error> {
           let stmt = format!("{} {}", #statement, select.statement());
-          let r = self.conn.prepare(stmt.as_str())?
-          .query_map([], |r| Ok( #ident { #( #fields: #assignements ),* } ))?
-          .collect::<Result<Vec<Self::Item>, rusqlite::Error>>()?;
+          let r = self.conn.query_map(stmt.as_str(), [], |r| Ok( #ident { #( #fields: #assignements ),* } ))?;
           Ok(r)
         }
       }
@@ -187,12 +199,17 @@ impl<'a> Sqlite<'a> {
     Ok(quote::quote! { 
       #declaration
       #from_rusqlite_impl
+      #from_sqlite_trait_impl
 
-      impl #sqlite_ident {
+      impl<T> #sqlite_ident <T>
+      where T: derive_sql::sqlite::SqliteTrait
+      {
         #create_table
       }
 
-      impl derive_sql::Sqlable for #sqlite_ident {
+      impl<T> derive_sql::Sqlable for #sqlite_ident <T>
+      where T: derive_sql::sqlite::SqliteTrait
+      {
         type Item = #ident;
         type Error = Box<dyn std::error::Error>;
         type Selector = Box<dyn derive_sql::Selectable>;

@@ -11,15 +11,18 @@ repository = "https://github.com/juliendecharentenay/derive-sql"
 [lib]
 
 [dependencies]
-derive-sql-sqlite = { version = "0", optional = true }
-## derive-sql-sqlite = { path = "../extras/derive-sql-sqlite", optional = true }
+rusqlite = { version = "0", features = [ "vtab" ], optional = true }
+log = "0"
 
-derive-sql-mysql = { version = "0", optional = true }
-## derive-sql-mysql = { path = "../extras/derive-sql-mysql", optional = true }
+## derive-sql-sqlite = { version = "0", optional = true }
+derive-sql-sqlite = { path = "../extras/derive-sql-sqlite", optional = true }
+
+## derive-sql-mysql = { version = "0", optional = true }
+derive-sql-mysql = { path = "../extras/derive-sql-mysql", optional = true }
 
 [features]
 default = [ ]
-sqlite = [ "derive-sql-sqlite" ]
+sqlite = [ "rusqlite", "derive-sql-sqlite" ]
 mysql  = [ "derive-sql-mysql" ]
 
 [package.metadata.docs.rs]

@@ -28,7 +28,7 @@ fn main() {
 }
 
 fn sample(conn: rusqlite::Connection) -> Result<(), Box<dyn std::error::Error>> {
-  let mut db: PersonSql = conn.into();
+  let mut db: PersonSql<_> = conn.into();
 
   // Create Table in SQLite database
   println!("Create table");

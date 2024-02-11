@@ -25,7 +25,7 @@
 //! # }
 //!
 //! let connection = rusqlite::Connection::open_in_memory().unwrap();
-//! let mut db: PersonSqlite = connection.into();
+//! let mut db: PersonSqlite<_> = connection.into();
 //!
 //! // initialise
 //! db.create_table().unwrap();

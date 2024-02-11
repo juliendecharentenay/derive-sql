@@ -16,12 +16,12 @@ quote = "1"
 proc-macro2 = "1"
 attribute-derive = "0"
 
-derive-sql-common = { version = "0" }
-## derive-sql-common = { path = "../derive-sql-common" }
+## derive-sql-common = { version = "0" }
+derive-sql-common = { path = "../derive-sql-common" }
 
 [dev-dependencies]
-derive-sql = { version = "0" }
-## derive-sql = { path = "../../derive-sql" }
+## derive-sql = { version = "0" }
+derive-sql = { path = "../../derive-sql" }
 
 mysql = { version = "24" }
 

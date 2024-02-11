@@ -71,6 +71,9 @@
 
 mod sqlable; pub use sqlable::Sqlable;
 mod selectable; 
+mod middleware; 
+#[cfg(feature="sqlite")]
+pub use middleware::sqlite;
 
 pub use selectable::Selectable;
 

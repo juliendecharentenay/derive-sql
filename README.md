@@ -13,13 +13,18 @@ Process to work through publishing all crates:
 
 ```
 # Modify Cargo.toml to use version in place of path
-vi extras/derive-sql-mysql/Cargo.toml extras/derive-sql-sqlite/Cargo.toml derive-sql/Cargo.toml
-git add extras/derive-sql-mysql/Cargo.toml extras/derive-sql-sqlite/Cargo.toml derive-sql/Cargo.toml
+vi extras/derive-sql-common/Cargo.toml extras/derive-sql-mysql/Cargo.toml extras/derive-sql-sqlite/Cargo.toml derive-sql/Cargo.toml
+git add extras/derive-sql-common/Cargo.toml extras/derive-sql-mysql/Cargo.toml extras/derive-sql-sqlite/Cargo.toml derive-sql/Cargo.toml
 git commit -m "Pre-release change from path to version"
 git push
 
 git tag -a v0.7.0 -m "Version 0.7.0"
 git push origin v0.7.0
+
+(
+  cd extras/derive-sql-common
+  cargo publish
+)
 
 (
   cd extras/derive-sql-mysql

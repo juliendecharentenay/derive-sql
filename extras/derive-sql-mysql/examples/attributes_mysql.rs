@@ -9,7 +9,7 @@ use derive_sql::{Sqlable, SimpleFilter, SimpleLimit};
 #[derive_sqlite(table_name = "person_v1")] // Use the nominated name for the MySQL table (default: person)
 struct Person {
   #[derive_sqlite(is_primary_key = true)] // Nominate the primary key (duplicates are not allowed)
-  i: u32,         // Note: can't use String as primary key... Needs a set number of characters
+  key: u32,
   name: String,
   #[derive_sqlite(on_insert = set_age_on_insert)] // Nomimate a function to be run when inserting
   #[derive_sqlite(on_update = set_age_on_update)] // Nomimate a function to be run when updating
@@ -39,26 +39,26 @@ fn sample(conn: mysql::Conn) -> Result<(), Box<dyn std::error::Error>> {
 
   // Insert person into database
   println!("Insert person...");
-  let person = Person { i: 1, name: "Jo".to_string(), age: 44, active: true };
+  let person = Person { key: 1, name: "Jo".to_string(), age: 44, active: true };
   let person = db.insert(person)?;
   assert!(person.name.eq("Jo"));
   println!("Insert person... ok");
 
   // Inserting another person with the same name (ie primary key) should fail
   println!("Insert person with duplicated name [primary key] fails...");
-  assert!(db.insert(Person { i: 1, name: "Jo".to_string(), age: 32, active: true }).is_err());
+  assert!(db.insert(Person { key: 1, name: "Jo".to_string(), age: 32, active: true }).is_err());
   println!("Insert person with duplicated name [primary key] fails... ok");
 
   // Check the run of on_insert function
   println!("Age is assigned when inserting...");
-  let _ = db.insert(Person { i: 2, name: "Jack".to_string(), age: 20, active: true})?;
+  let _ = db.insert(Person { key: 2, name: "Jack".to_string(), age: 20, active: true})?;
   let persons: Vec<Person> = db.select(Box::new(SimpleFilter::try_from(("name", "Jack"))?.and(Box::new(SimpleLimit::try_from(1)?))))?;
   assert!(persons[0].age == 33);
   println!("Age is assigned when inserting... ok");
 
   // Check the 
   println!("Age is assigned when updating...");
-  db.update(Box::new(SimpleFilter::try_from(("name", "Jack"))?.and(Box::new(SimpleLimit::try_from(1)?))), Person { i: 3, name: "Jack".to_string(), age: 44, active: true })?;
+  db.update(Box::new(SimpleFilter::try_from(("name", "Jack"))?.and(Box::new(SimpleLimit::try_from(1)?))), Person { key: 3, name: "Jack".to_string(), age: 44, active: true })?;
   let persons: Vec<Person> = db.select(Box::new(SimpleFilter::try_from(("name", "Jack"))?.and(Box::new(SimpleLimit::try_from(1)?))))?;
   assert!(persons[0].age == 26);
   println!("Age is assigned when updating... ok");

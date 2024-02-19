@@ -9,27 +9,31 @@ impl std::convert::From<rusqlite::Connection> for Conn {
 }
 
 impl SqliteTrait for Conn {
-  fn execute<P>(&self, sql: &str, params: P) -> rusqlite::Result<usize>
+  fn execute<P>(&self, sql: &str, params: P) -> DeriveSqlResult<usize>
   where P: rusqlite::Params
   {
-    self.conn.execute(sql, params)
+    Ok(self.conn.execute(sql, params)?)
   }
 
-  fn query_first<T, P, F>(&self, sql: &str, params: P, f: F) -> rusqlite::Result<T>
+  fn query_first<T, P, F>(&self, sql: &str, params: P, f: F) -> DeriveSqlResult<T>
   where P: rusqlite::Params,
         F: FnOnce(&rusqlite::Row<'_>) -> rusqlite::Result<T>
   {
+    Ok(
     self.conn.prepare(sql)?
-    .query_row(params, f)
+    .query_row(params, f)?
+    )
   }
 
-  fn query_map<T, P, F>(&self, sql: &str, params: P, f: F) -> rusqlite::Result<Vec<T>>
+  fn query_map<T, P, F>(&self, sql: &str, params: P, f: F) -> DeriveSqlResult<Vec<T>>
   where P: rusqlite::Params,
         F: FnMut(&rusqlite::Row<'_>) -> rusqlite::Result<T>
   {
+    Ok(
     self.conn.prepare(sql)?
     .query_map(params, f)?
-    .collect()
+    .collect::<rusqlite::Result<Vec<T>>>()?
+    )
   }
 }
 

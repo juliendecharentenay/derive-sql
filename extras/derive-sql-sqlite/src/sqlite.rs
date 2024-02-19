@@ -81,6 +81,7 @@ impl<'a> Sqlite<'a> {
         .collect::<syn::parse::Result<Vec<String>>>()?
         .join(", ")
       );
+      let doc = format!("{doc}<br>SQL statement: `{statement}`");
       quote::quote! {
         #[doc = #doc]
         pub fn create_table(&mut self) -> Result<(), Box<dyn std::error::Error>> {
@@ -94,6 +95,7 @@ impl<'a> Sqlite<'a> {
     let count = {
       let doc = format!("Implementation of functionality to count the number of item(s) from database table `{table_name}`");
       let statement = format!("SELECT COUNT(*) FROM {table_name}");
+      let doc = format!("{doc}<br>SQL statement: `{statement}`");
       quote::quote! {
         #[doc = #doc]
         fn count(&self, select: Self::Selector) -> Result<usize, Self::Error> {
@@ -109,6 +111,7 @@ impl<'a> Sqlite<'a> {
       let statement = format!("SELECT {} FROM {table_name}",
         fields.iter().map(|f| f.name()).collect::<Vec<String>>().join(", ")
       );
+      let doc = format!("{doc}<br>SQL statement: `{statement}`");
       let fields = fields.iter().map(|f| f.ident()).collect::<Vec<&syn::Ident>>();
       let assignements = fields.iter().enumerate().map(|(i, _)| quote::quote! { r.get(#i)? } ).collect::<Vec<proc_macro2::TokenStream>>();
       quote::quote! {
@@ -133,6 +136,7 @@ impl<'a> Sqlite<'a> {
         fields.iter().map(|f| f.name()).collect::<Vec<String>>().join(", "),
         fields.iter().enumerate().map(|(i,_)| format!("?{}", i+1)).collect::<Vec<String>>().join(", ")
       );
+      let doc = format!("{doc}<br>SQL statement: `{statement}`");
       let params = fields.iter().map(|f| f.ident()).collect::<Vec<&syn::Ident>>();
       quote::quote! {
         #[doc = #doc]
@@ -158,6 +162,7 @@ impl<'a> Sqlite<'a> {
         .map(|(i,f)| format!("{} = ?{}", f.ident(), i+1))
         .collect::<Vec<String>>().join(", ")
       );
+      let doc = format!("{doc}<br>SQL statement: `{statement}`");
       let params = fields.iter().map(|f| f.ident()).collect::<Vec<&syn::Ident>>();
 
       quote::quote! {
@@ -174,6 +179,7 @@ impl<'a> Sqlite<'a> {
     let delete = {
       let doc = format!("Implementation of functionality to delete item(s) from database table `{table_name}`");
       let statement = format!("DELETE FROM {table_name}");
+      let doc = format!("{doc}<br>SQL statement: `{statement}`");
       quote::quote! {
         #[doc = #doc]
         fn delete(&mut self, select: Self::Selector) -> Result<(), Self::Error> {
@@ -187,6 +193,7 @@ impl<'a> Sqlite<'a> {
     let delete_table = {
       let doc = format!("Delete table `{table_name}` from SQLite database");
       let statement = format!("DROP TABLE {table_name}");
+      let doc = format!("{doc}<br>SQL statement: `{statement}`");
       quote::quote! {
         #[doc = #doc]
         fn delete_table(&mut self) -> Result<(), Self::Error> {

@@ -61,7 +61,7 @@ impl<'a> Mysql<'a> {
     };
 
     let create_table = {
-      let doc = format!("Create table `{table_name}` in the MySQL database");
+      let doc = format!("Create table `{table_name}` in the MySQL database.");
       let statement = format!("CREATE TABLE IF NOT EXISTS {table_name} ( {} )",
         {
           let mut a = fields.iter()
@@ -80,6 +80,7 @@ impl<'a> Mysql<'a> {
           a.join(", ")
         }
       );
+      let doc = format!("{doc}<br>SQL statement: `{statement}`");
       quote::quote! {
         #[doc = #doc]
         pub fn create_table(&mut self) -> Result<(), Box<dyn std::error::Error>> {
@@ -94,6 +95,7 @@ impl<'a> Mysql<'a> {
     let count = {
       let doc = format!("Implementation of functionality to count the number of item(s) from database table `{table_name}`");
       let statement = format!("SELECT COUNT(*) FROM {table_name}");
+      let doc = format!("{doc}<br>SQL statement: `{statement}`");
       quote::quote! {
         #[doc = #doc]
         fn count(&self, select: Self::Selector) -> Result<usize, Self::Error> {
@@ -110,6 +112,7 @@ impl<'a> Mysql<'a> {
       let statement = format!("SELECT {} FROM {table_name}",
         fields.iter().map(|f| format!("`{}`",f.name())).collect::<Vec<String>>().join(", ")
       );
+      let doc = format!("{doc}<br>SQL statement: `{statement}`");
       let assignements = fields.iter().enumerate()
         .map(|(i, f)| {
           let name = f.name();
@@ -148,6 +151,7 @@ impl<'a> Mysql<'a> {
         fields.iter().map(|f| format!("`{}`",f.name())).collect::<Vec<String>>().join(", "),
         fields.iter().map(|f| format!(":{}", f.name())).collect::<Vec<String>>().join(", "),
       );
+      let doc = format!("{doc}<br>SQL statement: `{statement}`");
       let names  = fields.iter().map(|f| f.name()).collect::<Vec<String>>();
       let params = fields.iter().map(|f| f.ident()).collect::<Vec<&syn::Ident>>();
       quote::quote! {
@@ -179,6 +183,7 @@ impl<'a> Mysql<'a> {
         .map(|f| format!("`{}` = :{}", f.ident(), f.name()))
         .collect::<Vec<String>>().join(", ")
       );
+      let doc = format!("{doc}<br>SQL statement: `{statement}`");
       let names  = fields.iter().map(|f| f.name()).collect::<Vec<String>>();
       let params = fields.iter().map(|f| f.ident()).collect::<Vec<&syn::Ident>>();
 
@@ -201,6 +206,7 @@ impl<'a> Mysql<'a> {
     let delete = {
       let doc = format!("Implementation of functionality to delete item(s) from database table `{table_name}`");
       let statement = format!("DELETE FROM {table_name}");
+      let doc = format!("{doc}<br>SQL statement: `{statement}`");
       quote::quote! {
         #[doc = #doc]
         fn delete(&mut self, select: Self::Selector) -> Result<(), Self::Error> {
@@ -215,6 +221,7 @@ impl<'a> Mysql<'a> {
     let delete_table = {
       let doc = format!("Delete table `{table_name}` from SQLite database");
       let statement = format!("DROP TABLE {table_name}");
+      let doc = format!("{doc}<br>SQL statement: `{statement}`");
       quote::quote! {
         #[doc = #doc]
         fn delete_table(&mut self) -> Result<(), Self::Error> {

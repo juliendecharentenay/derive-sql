@@ -71,9 +71,11 @@
 
 mod sqlable; pub use sqlable::Sqlable;
 mod selectable; 
-mod middleware; 
+mod proxy; 
 #[cfg(feature="sqlite")]
-pub use middleware::sqlite;
+pub use proxy::sqlite;
+#[cfg(feature="mysql")]
+pub use proxy::mysql;
 
 pub use selectable::Selectable;
 
@@ -99,3 +101,6 @@ pub use derive_sql_sqlite::DeriveSqlite;
 /// can be saved, queried, stored to/from a MySQL database. Uses `mysql`. Requires `--features mysql`.
 pub use derive_sql_mysql::DeriveMysql;
 
+mod error;
+pub use error::DeriveSqlResult;
+pub use error::Error;

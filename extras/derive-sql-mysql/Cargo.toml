@@ -24,4 +24,6 @@ derive-sql-common = { path = "../derive-sql-common" }
 derive-sql = { path = "../../derive-sql" }
 
 mysql = { version = "24" }
+env_logger = "0"
+log = "0"
 

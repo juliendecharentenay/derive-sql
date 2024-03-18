@@ -1,6 +1,6 @@
 [package]
 name = "derive-sql-common"
-version = "0.8.0"
+version = "0.8.1"
 edition = "2021"
 license = "MIT"
 description = "Common functions supporting `derive-sql` and associated crates"
@@ -10,5 +10,5 @@ repository = "https://github.com/juliendecharentenay/derive-sql"
 
 [dependencies]
 syn = { version = "2", features = [ "full" ] }
-attribute-derive = "0"
+attribute-derive = "0.8.1"
 

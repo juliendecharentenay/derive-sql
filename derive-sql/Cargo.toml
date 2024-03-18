@@ -1,6 +1,6 @@
 [package]
 name = "derive-sql"
-version = "0.8.0"
+version = "0.8.1"
 edition = "2021"
 license = "MIT"
 description = "Structure the interaction with SQL databases - currently SQLite and MySQL via trait and a procedural macro"

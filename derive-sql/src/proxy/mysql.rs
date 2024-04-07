@@ -3,6 +3,8 @@ use super::*;
 mod conn; pub use conn::Conn;
 mod log; pub use log::Log;
 
+/// Generic trait exposing methods used for interaction with SQLite
+/// in `DeriveMysql` macro implementation.
 pub trait MysqlTrait {
   fn query_drop<Q>(&mut self, query: Q) -> DeriveSqlResult<()>
   where Q: AsRef<str>;

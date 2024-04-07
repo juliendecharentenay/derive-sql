@@ -41,7 +41,7 @@ impl<'a> Mysql<'a> {
       quote::quote! {
         #[doc = #doc]
         #vis struct #mysql_ident<T>
-        where T: mysql::prelude::Queryable
+        where T: derive_sql::mysql::MysqlTrait
         { 
           conn: std::cell::RefCell<T>,
         }
@@ -52,7 +52,7 @@ impl<'a> Mysql<'a> {
       let doc = format!("Create a new instance from a `mysql` connection");
       quote::quote! {
         impl<T> std::convert::From<T> for #mysql_ident<T>
-        where T: mysql::prelude::Queryable
+        where T: derive_sql::mysql::MysqlTrait
         {
           #[doc = #doc]
           fn from(conn: T) -> Self { #mysql_ident { conn: std::cell::RefCell::new(conn) } }
@@ -84,7 +84,6 @@ impl<'a> Mysql<'a> {
       quote::quote! {
         #[doc = #doc]
         pub fn create_table(&mut self) -> Result<(), Box<dyn std::error::Error>> {
-          use mysql::prelude::Queryable;
           let stmt = format!("{}", #statement);
           self.conn.borrow_mut().query_drop(stmt.as_str())?;
           Ok(())
@@ -99,7 +98,6 @@ impl<'a> Mysql<'a> {
       quote::quote! {
         #[doc = #doc]
         fn count(&self, select: Self::Selector) -> Result<usize, Self::Error> {
-          use mysql::prelude::Queryable;
           let stmt = format!("{} {}", #statement, select.statement());
           let r = self.conn.borrow_mut().query_first(stmt.as_str())?.unwrap_or(0);
           Ok(r)
@@ -116,7 +114,6 @@ impl<'a> Mysql<'a> {
       let assignements = fields.iter().enumerate()
         .map(|(i, f)| {
           let name = f.name();
-          // quote::quote! { r.get(#i).ok_or(format!("Unable to retrieve field {}", #name))? }
           quote::quote! { r.get_opt(#i)
             .ok_or(format!("Unable to retrieve field {}", #name))?
             .map_err(|e| format!("field `{}` error: {e}", #name))? 
@@ -127,7 +124,6 @@ impl<'a> Mysql<'a> {
       quote::quote! {
         #[doc = #doc]
         fn select(&self, select: Self::Selector) -> Result<Vec<Self::Item>, Self::Error> {
-          use mysql::prelude::Queryable;
           let stmt = format!("{} {}", #statement, select.statement());
           let r = self.conn.borrow_mut().query_map(stmt.as_str(), 
             |r: mysql::Row| Ok( #ident { #( #fields: #assignements ),* } )
@@ -157,7 +153,7 @@ impl<'a> Mysql<'a> {
       quote::quote! {
         #[doc = #doc]
         fn insert(&mut self, mut item: Self::Item) -> Result<Self::Item, Self::Error> {
-          use mysql::{params, prelude::Queryable};
+          use mysql::params;
           #( #functions )*
           let stmt = format!("{}", #statement);
           self.conn.borrow_mut().exec_drop(stmt.as_str(), 
@@ -190,7 +186,7 @@ impl<'a> Mysql<'a> {
       quote::quote! {
         #[doc = #doc]
         fn update(&mut self, select: Self::Selector, mut item: Self::Item) -> Result<Self::Item, Self::Error> {
-          use mysql::{params, prelude::Queryable};
+          use mysql::params;
           #( #functions )*
           let stmt = format!("{} {}", #statement, select.statement());
           self.conn.borrow_mut().exec_drop(stmt.as_str(), 
@@ -210,7 +206,6 @@ impl<'a> Mysql<'a> {
       quote::quote! {
         #[doc = #doc]
         fn delete(&mut self, select: Self::Selector) -> Result<(), Self::Error> {
-          use mysql::prelude::Queryable;
           let stmt = format!("{} {}", #statement, select.statement());
           self.conn.borrow_mut().exec_drop(stmt.as_str(), ())?;
           Ok(())
@@ -225,7 +220,6 @@ impl<'a> Mysql<'a> {
       quote::quote! {
         #[doc = #doc]
         fn delete_table(&mut self) -> Result<(), Self::Error> {
-          use mysql::prelude::Queryable;
           self.conn.borrow_mut().query_drop(#statement)?;
           Ok(())
         }
@@ -237,13 +231,13 @@ impl<'a> Mysql<'a> {
       #from_mysql_impl
 
       impl<T> #mysql_ident<T>
-      where T: mysql::prelude::Queryable 
+      where T: derive_sql::mysql::MysqlTrait
       {
         #create_table
       }
 
       impl<T> derive_sql::Sqlable for #mysql_ident<T>
-      where T: mysql::prelude::Queryable
+      where T: derive_sql::mysql::MysqlTrait
       {
         type Item = #ident;
         type Error = Box<dyn std::error::Error>;

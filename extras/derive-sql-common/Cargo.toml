@@ -10,5 +10,5 @@ repository = "https://github.com/juliendecharentenay/derive-sql"
 
 [dependencies]
 syn = { version = "2", features = [ "full" ] }
-attribute-derive = "0"
+attribute-derive = "0.8.1"
 

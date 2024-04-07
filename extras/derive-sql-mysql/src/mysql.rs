@@ -126,7 +126,7 @@ impl<'a> Mysql<'a> {
         fn select(&self, select: Self::Selector) -> Result<Vec<Self::Item>, Self::Error> {
           let stmt = format!("{} {}", #statement, select.statement());
           let r = self.conn.borrow_mut().query_map(stmt.as_str(), 
-            |r: mysql::Row| Ok( #ident { #( #fields: #assignements ),* } )
+            |r: ::mysql::Row| Ok( #ident { #( #fields: #assignements ),* } )
           )?
           .into_iter()
           .collect::<Result<Vec<Self::Item>, String>>()?;
@@ -153,11 +153,11 @@ impl<'a> Mysql<'a> {
       quote::quote! {
         #[doc = #doc]
         fn insert(&mut self, mut item: Self::Item) -> Result<Self::Item, Self::Error> {
-          use mysql::params;
+          use ::mysql::params;
           #( #functions )*
           let stmt = format!("{}", #statement);
           self.conn.borrow_mut().exec_drop(stmt.as_str(), 
-            mysql::params! {
+            ::mysql::params! {
               #( #names => &item.#params ), *
             }
           )?;
@@ -186,11 +186,11 @@ impl<'a> Mysql<'a> {
       quote::quote! {
         #[doc = #doc]
         fn update(&mut self, select: Self::Selector, mut item: Self::Item) -> Result<Self::Item, Self::Error> {
-          use mysql::params;
+          use ::mysql::params;
           #( #functions )*
           let stmt = format!("{} {}", #statement, select.statement());
           self.conn.borrow_mut().exec_drop(stmt.as_str(), 
-            mysql::params! {
+            ::mysql::params! {
               #( #names => &item.#params ), *
             }
           )?;

@@ -16,14 +16,19 @@
 //! used in the `Sqlable` trait. It is a possible option - but not limited
 //! to it as the `Sqlable` trait uses an associated type for `Selector`.
 //!
-//! This crate includes the derive macro `DeriveSqlite` [when compiled with the feature `--features sqlite`]
+//! This crate includes:
+//! - the derive macro `DeriveSqlite` [when compiled with the feature `--features sqlite`]
 //! which provides an implementation of the `Sqlable` trait for SQLite as a wrapper around the `rusqlite`
-//! crate.
+//! crate;
+//! - the derive macro `DeriveMysql` [when compiled with the feature `--features mysql`]
+//! which provides an implementation of the `Sqlable` trait for MySQL as a wrapper around the `mysql`
+//! crate;
 //!
 //! Please see examples here and the `DeriveSqlite` documentation.
 //!
 //! # Features:
-//! - `sqlite` provide a derive macro to implement the `Sqlable` trait for SQLite database (implemented as a wrapper around the `rusqlite` crate);
+//! - `sqlite` provides a derive macro that implements the `Sqlable` trait for SQLite database (implemented as a wrapper around the `rusqlite` crate);
+//! - `mysql` provides a derive macro that implements the `Sqlable` trait for MySQL database (implemented as a wrapper around the `mysql` crate);
 //!
 //! # Mocking:
 //! The example of code below shows how the trait can be mocked using `mockall` for unit testing purposes. The
@@ -71,11 +76,18 @@
 
 mod sqlable; pub use sqlable::Sqlable;
 mod selectable; 
-mod proxy; 
+mod proxy; // pub use proxy::Database;
+pub mod traits;
+pub mod generics;
 #[cfg(feature="sqlite")]
 pub use proxy::sqlite;
 #[cfg(feature="mysql")]
+/// MySQL connection
 pub use proxy::mysql;
+
+/// Implementation of generic approach to `WHERE` clauses filtering. Provides a generic operator for single clause and 
+/// `And` and `Or` clauses combinator;
+pub use selectable::filter;
 
 pub use selectable::Selectable;
 

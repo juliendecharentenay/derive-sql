@@ -31,8 +31,8 @@ impl<'a> Mysql<'a> {
       .collect::<Result<Vec<fields::Fields>, syn::Error>>()?;
 
     // Primary key of SQL type TEXT is not supported
-    if let Some(name) = fields.iter().fold(None, |r, f| r.or_else(|| if f.is_primary_key() && matches!(f.sql_type(), SqlType::Text) { Some(f.name()) } else { None })) {
-      return Err(syn::Error::new(self.ast.ident.span(), format!("Field `{name}` error: Use of String/TEXT primary key is not supported in `derive-sql` feature `MySQL`.")));
+    if let Some(name) = fields.iter().fold(None, |r, f| r.or_else(|| if f.is_primary_key() && (matches!(f.sql_type(), SqlType::Text) || matches!(f.sql_type(), SqlType::OptionText)) { Some(f.name()) } else { None })) {
+      return Err(syn::Error::new(self.ast.ident.span(), format!("Field `{name}` error: Use of String, Option<String> primary key is not supported in `derive-sql` feature `MySQL`.")));
     }
 
 
@@ -57,6 +57,14 @@ impl<'a> Mysql<'a> {
           #[doc = #doc]
           fn from(conn: T) -> Self { #mysql_ident { conn: std::cell::RefCell::new(conn) } }
         }
+      }
+    };
+
+    let static_members = {
+      let members = fields.iter().map(|f| f.as_pub_static_member()).collect::<Vec<proc_macro2::TokenStream>>();
+      quote::quote! {
+        pub const TABLE_NAME: &'static str = #table_name ;
+        #( #members )*
       }
     };
 
@@ -233,6 +241,7 @@ impl<'a> Mysql<'a> {
       impl<T> #mysql_ident<T>
       where T: derive_sql::mysql::MysqlTrait
       {
+        #static_members
         #create_table
       }
 

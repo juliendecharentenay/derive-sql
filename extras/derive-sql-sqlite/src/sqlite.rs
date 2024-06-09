@@ -64,6 +64,14 @@ impl<'a> Sqlite<'a> {
       }
     };
 
+    let static_members = {
+      let members = fields.iter().map(|f| f.as_pub_static_member()).collect::<Vec<proc_macro2::TokenStream>>();
+      quote::quote! {
+        pub const TABLE_NAME: &'static str = #table_name ;
+        #( #members )*
+      }
+    };
+
     let create_table = {
       let doc = format!("Create table `{table_name}` in the SQLite database");
       let statement = format!("CREATE TABLE IF NOT EXISTS {table_name} ( {} )",
@@ -211,6 +219,7 @@ impl<'a> Sqlite<'a> {
       impl<T> #sqlite_ident <T>
       where T: derive_sql::sqlite::SqliteTrait
       {
+        #static_members
         #create_table
       }
 

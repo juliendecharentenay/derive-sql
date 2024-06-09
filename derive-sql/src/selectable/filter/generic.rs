@@ -1,20 +1,29 @@
-//! Implement a generic filter operator
+//! Implement a generic filter operator to support filter such as `name="John"` as a combination of `(key, operator, value)`
+//! Supported operators are `=`, `<`, `<=`, `>`, `>=`
 use super::*;
 use value::Value;
 
 pub enum Operator {
   Equal,
+  Lower,
+  LowerEqual,
+  Greater,
+  GreaterEqual,
 }
 
 impl std::fmt::Display for Operator {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     match self {
-      Operator::Equal => write!(f, "="),
+      Operator::Equal        => write!(f, "="),
+      Operator::Lower        => write!(f, "<"),
+      Operator::LowerEqual   => write!(f, "<="),
+      Operator::Greater      => write!(f, ">"),
+      Operator::GreaterEqual => write!(f, ">="),
     }
   }
 }
 
-struct Filter<T> 
+pub struct Filter<T> 
 where T: std::fmt::Display
 {
   key: String,
@@ -22,11 +31,47 @@ where T: std::fmt::Display
   operator: Operator,
 }
 
+impl<T> std::convert::From<(String, Operator, Value<T>)> for Filter<T> 
+where T: std::fmt::Display
+{
+  fn from((key, operator, value): (String, Operator, Value<T>)) -> Self {
+    Filter { key, value, operator }
+  }
+}
+
+impl<T> std::convert::From<(&str, Operator, Value<T>)> for Filter<T> 
+where T: std::fmt::Display
+{
+  fn from((key, operator, value): (&str, Operator, Value<T>)) -> Self {
+    Filter { key: key.to_string(), value, operator }
+  }
+}
+
+impl<T> FilterTrait for Filter<T>
+where T: std::fmt::Display
+{
+  fn filter(&self) -> String {
+    format!("`{0}` {1} {2}", self.key, self.operator, self.value)
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn it_outputs_correct_statement() -> Result<(), Box<dyn std::error::Error>> {
+    let g: Filter<u32> = ("user_id", Operator::Equal, 1.into()).into();
+    assert!(FilterTrait::filter(&g).eq("`user_id` = 1"));
+    Ok(())
+  }
+}
+
+/*
 pub struct Generic<T> 
 where T: std::fmt::Display
 {
   filter: Option<Filter<T>>,
-  next: Option<Box<dyn Selectable>>,
 }
 
 impl<T> std::convert::From<()> for Generic<T>
@@ -79,3 +124,4 @@ mod tests {
     Ok(())
   }
 }
+*/

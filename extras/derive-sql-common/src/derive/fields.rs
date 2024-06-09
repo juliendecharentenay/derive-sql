@@ -42,4 +42,11 @@ impl<'a> Fields<'a> {
   pub fn is_unique(&self) -> bool { self.attrs.is_unique }
   pub fn on_insert(&'a self) -> &'a Option<syn::PatPath> { &self.attrs.on_insert }
   pub fn on_update(&'a self) -> &'a Option<syn::PatPath> { &self.attrs.on_update }
+  pub fn as_pub_static_member(&'a self) -> proc_macro2::TokenStream {
+    let key: syn::Ident = syn::Ident::new(self.name().to_ascii_uppercase().as_str(), self.ident.span()); 
+    let value = self.name();
+    quote::quote! {
+      pub const #key : &'static str = #value;
+    }
+  }
 }

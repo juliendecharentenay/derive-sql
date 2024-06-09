@@ -1,14 +1,13 @@
 use super::*;
 
 enum Filter {
-  FilterNone(filter::generic::Generic<String>),
-  FilterStr(filter::generic::Generic<String>),
-  FilterU32(filter::generic::Generic<u32>),
+  FilterNone(filter::Filterable<filter::generic::Filter<String>>),
+  FilterStr(filter::Filterable<filter::generic::Filter<String>>),
+  FilterU32(filter::Filterable<filter::generic::Filter<u32>>),
 }
 
 impl Filter {
   fn and(self, next: Box<dyn Selectable>) -> Filter {
-    use filter::Filterable;
     match self {
       Filter::FilterNone(v) => Filter::FilterNone(v.and(next)),
       Filter::FilterStr(v) => Filter::FilterStr(v.and(next)),
@@ -17,7 +16,6 @@ impl Filter {
   }
 
   fn filter(&self) -> Option<String> {
-    use filter::Filterable;
     match self {
       Filter::FilterNone(v) => filter::Filterable::filter(v),
       Filter::FilterStr(v) => filter::Filterable::filter(v),
@@ -26,7 +24,6 @@ impl Filter {
   }
 
   fn next(&self) -> &Option<Box<dyn Selectable>> {
-    use filter::Filterable;
     match self {
       Filter::FilterNone(v) => v.next(),
       Filter::FilterStr(v) => v.next(),
@@ -53,27 +50,36 @@ impl Selectable for SimpleFilter {
 impl std::convert::TryFrom<()> for SimpleFilter {
   type Error = Box<dyn std::error::Error>;
   fn try_from(_: ()) -> Result<Self, Self::Error> {
-    Ok(SimpleFilter { filter: Filter::FilterNone(().into()) }) // None, next: None })
+    Ok(SimpleFilter { filter: Filter::FilterNone(
+      std::convert::From::<filter::Filterable<filter::generic::Filter<String>>>::from(().into())
+    ) }) // None, next: None })
   }
 }
 
 impl std::convert::TryFrom<(String, String)> for SimpleFilter {
   type Error = Box<dyn std::error::Error>;
   fn try_from((key, value): (String, String)) -> Result<Self, Self::Error> {
-    Ok(SimpleFilter { filter: Filter::FilterStr((key, filter::Operator::Equal, value::Value::<String>::from(value)).into()) }) // Some((key, Value::ValueStr(value))), next: None})
+    let filter: filter::generic::Filter<String> = (key, filter::Operator::Equal, value::Value::<String>::from(value)).into();
+    let filter: filter::Filterable<_> = filter.into();
+    Ok(SimpleFilter { filter: Filter::FilterStr(filter) })
   }
 }
 
 impl std::convert::TryFrom<(&str, &str)> for SimpleFilter {
   type Error = Box<dyn std::error::Error>;
   fn try_from((key, value): (&str, &str)) -> Result<Self, Self::Error> {
-    Ok(SimpleFilter { filter: Filter::FilterStr((key, filter::Operator::Equal, value::Value::<String>::from(value)).into()) }) // Some((key.to_string(), Value::ValueStr(value.to_string()))), next: None, })
+    let filter: filter::generic::Filter<String> = (key, filter::Operator::Equal, value::Value::<String>::from(value)).into();
+    let filter: filter::Filterable<_> = filter.into();
+    Ok(SimpleFilter { filter: Filter::FilterStr(filter) })
   }
 }
 
 impl std::convert::TryFrom<(&str, u32)> for SimpleFilter {
   type Error = Box<dyn std::error::Error>;
   fn try_from((key, value): (&str, u32)) -> Result<Self, Self::Error> {
-    Ok(SimpleFilter { filter: Filter::FilterU32((key, filter::Operator::Equal, value::Value::<u32>::from(value)).into()) }) // Some((key.to_string(), Value::ValueU32(value))), next: None, })
+    let filter: filter::generic::Filter<_> = (key, filter::Operator::Equal, value::Value::<u32>::from(value)).into();
+    let filter: filter::Filterable<_> = filter.into();
+    Ok(SimpleFilter { filter: Filter::FilterU32(filter) })
+    // Ok(SimpleFilter { filter: Filter::FilterU32((key, filter::Operator::Equal, value::Value::<u32>::from(value)).into()) }) // Some((key.to_string(), Value::ValueU32(value))), next: None, })
   }
 }

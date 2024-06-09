@@ -15,6 +15,7 @@ struct Person {
   name: String,
   age: u32,
   active: bool,
+  nickname: Option<String>,
 }
 
 fn main() {
@@ -37,14 +38,14 @@ fn sample(conn: mysql::Conn) -> Result<(), Box<dyn std::error::Error>> {
 
   // Insert person into database
   log::info!("Insert person...");
-  let person = Person { name: "Jo".to_string(), age: 44, active: true };
+  let person = Person { name: "Jo".to_string(), age: 44, active: true, nickname: None, };
   let person = db.insert(person)?;
   assert!(person.name.eq("Jo"));
   log::info!("Insert person... ok");
 
-  let _ = db.insert(Person { name: "Jack".to_string(),  age: 44, active: true})?;
-  let _ = db.insert(Person { name: "Harry".to_string(), age: 27, active: true})?;
-  let _ = db.insert(Person { name: "Jack".to_string(),  age: 27, active: false})?;
+  let _ = db.insert(Person { name: "Jack".to_string(),  age: 44, active: true, nickname: None,})?;
+  let _ = db.insert(Person { name: "Harry".to_string(), age: 27, active: true, nickname: None,})?;
+  let _ = db.insert(Person { name: "Jack".to_string(),  age: 27, active: false, nickname: None,})?;
 
   // Retrieve list of persons from SQL database
   log::info!("Retrieve list of persons...");
@@ -65,6 +66,7 @@ fn sample(conn: mysql::Conn) -> Result<(), Box<dyn std::error::Error>> {
   let persons: Vec<Person> = db.select(Box::new(SimpleFilter::try_from(("name", "Jack"))?.and(Box::new(SimpleLimit::try_from(1)?))))?;
   assert!(persons.len() == 1);
   assert!(persons[0].age == 44);
+  assert!(persons[0].nickname.is_none());
   log::info!("Retrieve list of persons with filter and limit... ok");
 
   // Retrieve the second person (ie the first person after the first one) with the name "Jack"
@@ -82,7 +84,8 @@ fn sample(conn: mysql::Conn) -> Result<(), Box<dyn std::error::Error>> {
 
   // Update the first person with the name "Jack"...
   log::info!("Update persons with filter and limit...");
-  db.update(Box::new(SimpleFilter::try_from(("name", "Jack"))?.and(Box::new(SimpleLimit::try_from(1)?))), Person { name: "Jo".to_string(), age: 44, active: true })?;
+  db.update(Box::new(SimpleFilter::try_from(("name", "Jack"))?.and(Box::new(SimpleLimit::try_from(1)?))), 
+            Person { name: "Jo".to_string(), age: 44, active: true, nickname: None, })?;
   assert!(db.select(Box::new(SimpleFilter::try_from(("name", "Jack"))?))?.len() == 1);
   log::info!("Update persons with filter and limit... ok");
 

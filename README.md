@@ -12,9 +12,9 @@ based on a struct with named fields.
 Process to work through publishing all crates:
 
 ```
-OLD_VERSION=0.9.0
-NEW_VERSION=0.10.0
-VERSION=v$NEW_VERSION
+export OLD_VERSION=0.10.0
+export NEW_VERSION=0.11.0
+export VERSION=v$NEW_VERSION
 
 # Modify Cargo.toml to use version in place of path
 sed -s -i -e 's/^derive-sql/## Dev derive-sql/' extras/derive-sql-common/Cargo.toml extras/derive-sql-mysql/Cargo.toml extras/derive-sql-sqlite/Cargo.toml extras/derive-sql-statement/Cargo.toml derive-sql/Cargo.toml

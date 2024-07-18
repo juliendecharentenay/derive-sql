@@ -29,15 +29,21 @@ impl SqlType {
   pub fn from_type(ty: &syn::Type) -> SqlType {
     match ty {
       syn::Type::Path(syn::TypePath { path, .. }) if path.is_ident("String") => SqlType::Text,
+      syn::Type::Path(syn::TypePath { path, .. }) if path.is_ident("i8")     => SqlType::Integer,
+      syn::Type::Path(syn::TypePath { path, .. }) if path.is_ident("u8")     => SqlType::Integer,
       syn::Type::Path(syn::TypePath { path, .. }) if path.is_ident("i32")    => SqlType::Integer,
       syn::Type::Path(syn::TypePath { path, .. }) if path.is_ident("u32")    => SqlType::Integer,
+      syn::Type::Path(syn::TypePath { path, .. }) if path.is_ident("i64")    => SqlType::Integer,
+      syn::Type::Path(syn::TypePath { path, .. }) if path.is_ident("u64")    => SqlType::Integer,
       syn::Type::Path(syn::TypePath { path, .. }) if path.is_ident("usize")  => SqlType::Integer,
       syn::Type::Path(syn::TypePath { path, .. }) if path.is_ident("bool")   => SqlType::Boolean,
       syn::Type::Path(syn::TypePath { path, .. }) if path.is_ident("f32")    => SqlType::Float,
+      syn::Type::Path(syn::TypePath { path, .. }) if path.is_ident("f64")    => SqlType::Float,
       syn::Type::Path(syn::TypePath { path: syn::Path { segments, .. } , .. }) => {
         match segments.last() {
           Some(syn::PathSegment { ident, ..}) if ident == "DateTime"  => SqlType::DateTime,
           Some(syn::PathSegment { ident, ..}) if ident == "NaiveDate" => SqlType::Date,
+          Some(syn::PathSegment { ident, ..}) if ident == "NaiveDateTime" => SqlType::DateTime,
           Some(syn::PathSegment { ident, 
             arguments: syn::PathArguments::AngleBracketed( syn::AngleBracketedGenericArguments { args, ..  } )
           }) if ident == "Option" => {
@@ -119,6 +125,11 @@ mod test_sql_type {
     let t = SqlType::from_type(&t);
     assert!(matches!(t, SqlType::Date));
     assert!(t.to_string().eq("DATE"));
+
+    let t = syn::parse_str::<syn::Type>("NaiveDateTime")?;
+    let t = SqlType::from_type(&t);
+    assert!(matches!(t, SqlType::DateTime));
+    assert!(t.to_string().eq("DATETIME"));
 
     Ok(())
   }

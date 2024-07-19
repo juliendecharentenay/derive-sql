@@ -12,8 +12,8 @@ based on a struct with named fields.
 Process to work through publishing all crates:
 
 ```
-export OLD_VERSION=0.10.0
-export NEW_VERSION=0.11.0
+export OLD_VERSION=0.11.0
+export NEW_VERSION=0.11.1
 export VERSION=v$NEW_VERSION
 
 # Modify Cargo.toml to use version in place of path

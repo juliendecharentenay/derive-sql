@@ -1,6 +1,6 @@
 [package]
 name = "derive-sql-mysql"
-version = "0.11.0"
+version = "0.11.1"
 edition = "2021"
 license = "MIT"
 description = "Accompany the `derive-sql` crate. Implements the `DeriveMySql` procedural macro to implement trait for MySQL"

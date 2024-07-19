@@ -19,14 +19,14 @@ impl Selectable for SimpleOffset {
 
 impl std::convert::TryFrom<()> for SimpleOffset {
   type Error = Box<dyn std::error::Error>;
-  fn try_from(_: ()) -> Result<Self, Self::Error> {
+  fn try_from(_: ()) -> std::result::Result<Self, Self::Error> {
     Ok(SimpleOffset { offset: None, limit: None, next: None })
   }
 }
 
 impl std::convert::TryFrom<(usize, usize)> for SimpleOffset {
   type Error = Box<dyn std::error::Error>;
-  fn try_from((limit, offset): (usize, usize)) -> Result<Self, Self::Error> {
+  fn try_from((limit, offset): (usize, usize)) -> std::result::Result<Self, Self::Error> {
     Ok(SimpleOffset { limit: Some(limit), offset: Some(offset), next: None})
   }
 }

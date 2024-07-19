@@ -4,7 +4,7 @@ use super::*;
 /// For example, create a condition to filter name column equal to 'Jane':
 ///
 /// ```rust
-/// use derive_sql::{Field, filter, order};
+/// use derive_sql::structs::{Field, filter, order};
 /// use derive_sql::traits::{Filter, Order};
 ///
 /// let condition: filter::Condition<_> = Field::from("name").eq("Jane");

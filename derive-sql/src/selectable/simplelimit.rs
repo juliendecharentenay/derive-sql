@@ -18,14 +18,14 @@ impl Selectable for SimpleLimit {
 
 impl std::convert::TryFrom<()> for SimpleLimit {
   type Error = Box<dyn std::error::Error>;
-  fn try_from(_: ()) -> Result<Self, Self::Error> {
+  fn try_from(_: ()) -> std::result::Result<Self, Self::Error> {
     Ok(SimpleLimit { limit: None, next: None })
   }
 }
 
 impl std::convert::TryFrom<usize> for SimpleLimit {
   type Error = Box<dyn std::error::Error>;
-  fn try_from(v: usize) -> Result<Self, Self::Error> {
+  fn try_from(v: usize) -> std::result::Result<Self, Self::Error> {
     Ok(SimpleLimit { limit: Some(v), next: None})
   }
 }

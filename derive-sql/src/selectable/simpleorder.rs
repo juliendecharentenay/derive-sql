@@ -32,21 +32,21 @@ impl Selectable for SimpleOrder {
 
 impl std::convert::TryFrom<()> for SimpleOrder {
   type Error = Box<dyn std::error::Error>;
-  fn try_from(_: ()) -> Result<Self, Self::Error> {
+  fn try_from(_: ()) -> std::result::Result<Self, Self::Error> {
     Ok(SimpleOrder { order: None, next: None })
   }
 }
 
 impl std::convert::TryFrom<(&str, Order)> for SimpleOrder {
   type Error = Box<dyn std::error::Error>;
-  fn try_from((key, order): (&str, Order)) -> Result<Self, Self::Error> {
+  fn try_from((key, order): (&str, Order)) -> std::result::Result<Self, Self::Error> {
     Ok(SimpleOrder { order: Some((key.to_string(), order)), next: None })
   }
 }
 
 impl std::convert::TryFrom<(String, Order)> for SimpleOrder {
   type Error = Box<dyn std::error::Error>;
-  fn try_from((key, order): (String, Order)) -> Result<Self, Self::Error> {
+  fn try_from((key, order): (String, Order)) -> std::result::Result<Self, Self::Error> {
     Ok(SimpleOrder { order: Some((key, order)), next: None })
   }
 }

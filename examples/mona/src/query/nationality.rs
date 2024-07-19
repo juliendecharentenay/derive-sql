@@ -29,8 +29,8 @@ impl derive_sql::traits::AsStatement<Item> for Statement {
       GROUP BY {nationality} 
       ORDER BY count DESC
     ", 
-    nationality = artist::ArtistSqlite::<derive_sql::sqlite::Conn>::NATIONALITY,
-    table       = artist::ArtistSqlite::<derive_sql::sqlite::Conn>::TABLE_NAME,
+    nationality = artist::ArtistSqlite::<derive_sql::proxy::sqlite::Conn>::NATIONALITY,
+    table       = artist::ArtistSqlite::<derive_sql::proxy::sqlite::Conn>::TABLE_NAME,
     ))
   }
 }

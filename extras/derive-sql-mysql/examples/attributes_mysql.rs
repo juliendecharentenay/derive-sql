@@ -31,7 +31,7 @@ fn main() {
 }
 
 fn sample(conn: mysql::Conn) -> Result<(), Box<dyn std::error::Error>> {
-  let mut db: PersonSql<_> = derive_sql::mysql::Conn::from(conn).into();
+  let mut db: PersonSql<_> = derive_sql::proxy::mysql::Conn::from(conn).into();
 
   // Create Table in MySQL database
   println!("Create table");

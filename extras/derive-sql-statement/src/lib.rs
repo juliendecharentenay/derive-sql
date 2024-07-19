@@ -16,18 +16,19 @@
 //! And you can use:
 //! ```rust
 //! # use derive_sql::*;
-//! # use derive_sql_mysql::DeriveMysql;
 //! # #[derive(DeriveSqlStatement)]
 //! # pub struct Person {
 //! #   name: String,
 //! #   age: u32,
 //! # }
+//! use derive_sql::structs::*;
 //!
 //! fn handle<Con, Row>(s: &mut Con) 
 //! where Con: traits::Connection<Row>,
 //!       Row: traits::Row,
 //! {
-//!   let db = PersonSql::default();
+//!   use derive_sql::traits::{Table, SelectV2, Insert, Delete, Update};
+//!   let db = SqlPerson::default();
 //!
 //!   // initialise
 //!   db.create(s).unwrap();
@@ -38,14 +39,14 @@
 //!   db.insert(s, &Person {name: "Charlie".to_string(), age: 33 }).unwrap();
 //! 
 //!   // Query
-//!   let persons: Vec<Person> = db.select(s, &Field::from("age").eq(32)).unwrap();
+//!   let persons: Vec<Person> = db.select_with_filter(s, &Field::from("age").eq(32)).unwrap();
 //!   assert!(persons[0].name.eq("Bert"));
 //!
 //!   // Update
-//!   db.update(s, &Field::from("name").eq("Abi"), &Person { name: "Abi".to_string(), age: 32 }).unwrap();
+//!   db.update_with_filter(s, &Field::from("name").eq("Abi"), &Person { name: "Abi".to_string(), age: 32 }).unwrap();
 //!
 //!   // Delete
-//!   db.delete(s, &Field::from("name").eq("Abi")).unwrap();
+//!   db.delete_with_filter(s, &Field::from("name").eq("Abi")).unwrap();
 //!
 //!   // Clear the table
 //!   db.drop(s).unwrap();
@@ -53,7 +54,7 @@
 //!
 //! let pool = ::mysql::Pool::new("mysql://test@localhost/simpledb").unwrap();
 //! let mut connection = pool.get_conn().unwrap();
-//! handle(&connection);
+//! handle(&mut connection);
 //! ```
 //!
 //! # Container attributes:

@@ -46,7 +46,7 @@ git push origin $VERSION
 )
 
 (
-  cd extras/derive-sql-statment
+  cd extras/derive-sql-statement
   cargo publish
 )
 

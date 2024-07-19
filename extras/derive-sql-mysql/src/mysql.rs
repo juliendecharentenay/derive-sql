@@ -28,7 +28,7 @@ impl<'a> Mysql<'a> {
 
     let fields = self.fields_named.named.iter()
       .map(|f| f.try_into().map_err(|e| syn::Error::new(ident.span(), format!("{e}"))))
-      .collect::<Result<Vec<fields::Fields>, syn::Error>>()?;
+      .collect::<std::result::Result<Vec<fields::Fields>, syn::Error>>()?;
 
     // Primary key of SQL type TEXT is not supported
     if let Some(name) = fields.iter().fold(None, |r, f| r.or_else(|| if f.is_primary_key() && (matches!(f.sql_type(), SqlType::Text) || matches!(f.sql_type(), SqlType::OptionText)) { Some(f.name()) } else { None })) {
@@ -41,7 +41,7 @@ impl<'a> Mysql<'a> {
       quote::quote! {
         #[doc = #doc]
         #vis struct #mysql_ident<T>
-        where T: derive_sql::mysql::MysqlTrait
+        where T: derive_sql::proxy::mysql::MysqlTrait
         { 
           conn: std::cell::RefCell<T>,
         }
@@ -52,7 +52,7 @@ impl<'a> Mysql<'a> {
       let doc = format!("Create a new instance from a `mysql` connection");
       quote::quote! {
         impl<T> std::convert::From<T> for #mysql_ident<T>
-        where T: derive_sql::mysql::MysqlTrait
+        where T: derive_sql::proxy::mysql::MysqlTrait
         {
           #[doc = #doc]
           fn from(conn: T) -> Self { #mysql_ident { conn: std::cell::RefCell::new(conn) } }
@@ -91,7 +91,7 @@ impl<'a> Mysql<'a> {
       let doc = format!("{doc}<br>SQL statement: `{statement}`");
       quote::quote! {
         #[doc = #doc]
-        pub fn create_table(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+        pub fn create_table(&mut self) -> std::result::Result<(), Box<dyn std::error::Error>> {
           let stmt = format!("{}", #statement);
           self.conn.borrow_mut().query_drop(stmt.as_str())?;
           Ok(())
@@ -105,7 +105,7 @@ impl<'a> Mysql<'a> {
       let doc = format!("{doc}<br>SQL statement: `{statement}`");
       quote::quote! {
         #[doc = #doc]
-        fn count(&self, select: Self::Selector) -> Result<usize, Self::Error> {
+        fn count(&self, select: Self::Selector) -> std::result::Result<usize, Self::Error> {
           let stmt = format!("{} {}", #statement, select.statement());
           let r = self.conn.borrow_mut().query_first(stmt.as_str())?.unwrap_or(0);
           Ok(r)
@@ -131,13 +131,13 @@ impl<'a> Mysql<'a> {
       let fields = fields.iter().map(|f| f.ident()).collect::<Vec<&syn::Ident>>();
       quote::quote! {
         #[doc = #doc]
-        fn select(&self, select: Self::Selector) -> Result<Vec<Self::Item>, Self::Error> {
+        fn select(&self, select: Self::Selector) -> std::result::Result<Vec<Self::Item>, Self::Error> {
           let stmt = format!("{} {}", #statement, select.statement());
           let r = self.conn.borrow_mut().query_map(stmt.as_str(), 
             |r: ::mysql::Row| Ok( #ident { #( #fields: #assignements ),* } )
           )?
           .into_iter()
-          .collect::<Result<Vec<Self::Item>, String>>()?;
+          .collect::<std::result::Result<Vec<Self::Item>, String>>()?;
           Ok(r)
         }
       }
@@ -160,7 +160,7 @@ impl<'a> Mysql<'a> {
       let params = fields.iter().map(|f| f.ident()).collect::<Vec<&syn::Ident>>();
       quote::quote! {
         #[doc = #doc]
-        fn insert(&mut self, mut item: Self::Item) -> Result<Self::Item, Self::Error> {
+        fn insert(&mut self, mut item: Self::Item) -> std::result::Result<Self::Item, Self::Error> {
           use ::mysql::params;
           #( #functions )*
           let stmt = format!("{}", #statement);
@@ -193,7 +193,7 @@ impl<'a> Mysql<'a> {
 
       quote::quote! {
         #[doc = #doc]
-        fn update(&mut self, select: Self::Selector, mut item: Self::Item) -> Result<Self::Item, Self::Error> {
+        fn update(&mut self, select: Self::Selector, mut item: Self::Item) -> std::result::Result<Self::Item, Self::Error> {
           use ::mysql::params;
           #( #functions )*
           let stmt = format!("{} {}", #statement, select.statement());
@@ -213,7 +213,7 @@ impl<'a> Mysql<'a> {
       let doc = format!("{doc}<br>SQL statement: `{statement}`");
       quote::quote! {
         #[doc = #doc]
-        fn delete(&mut self, select: Self::Selector) -> Result<(), Self::Error> {
+        fn delete(&mut self, select: Self::Selector) -> std::result::Result<(), Self::Error> {
           let stmt = format!("{} {}", #statement, select.statement());
           self.conn.borrow_mut().exec_drop(stmt.as_str(), ())?;
           Ok(())
@@ -227,7 +227,7 @@ impl<'a> Mysql<'a> {
       let doc = format!("{doc}<br>SQL statement: `{statement}`");
       quote::quote! {
         #[doc = #doc]
-        fn delete_table(&mut self) -> Result<(), Self::Error> {
+        fn delete_table(&mut self) -> std::result::Result<(), Self::Error> {
           self.conn.borrow_mut().query_drop(#statement)?;
           Ok(())
         }
@@ -239,14 +239,14 @@ impl<'a> Mysql<'a> {
       #from_mysql_impl
 
       impl<T> #mysql_ident<T>
-      where T: derive_sql::mysql::MysqlTrait
+      where T: derive_sql::proxy::mysql::MysqlTrait
       {
         #static_members
         #create_table
       }
 
       impl<T> derive_sql::Sqlable for #mysql_ident<T>
-      where T: derive_sql::mysql::MysqlTrait
+      where T: derive_sql::proxy::mysql::MysqlTrait
       {
         type Item = #ident;
         type Error = Box<dyn std::error::Error>;

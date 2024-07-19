@@ -27,14 +27,14 @@ impl<'a> Sqlite<'a> {
 
     let fields = self.fields_named.named.iter()
       .map(|f| f.try_into().map_err(|e| syn::Error::new(ident.span(), format!("{e}"))))
-      .collect::<Result<Vec<fields::Fields>, syn::Error>>()?;
+      .collect::<std::result::Result<Vec<fields::Fields>, syn::Error>>()?;
 
     let declaration = {
       let doc = format!("Wrapper struct to query item of type `{ident}` from SQLite database using `rusqlite` library");
       quote::quote! {
         #[doc = #doc]
         #vis struct #sqlite_ident <T>
-        where T: derive_sql::sqlite::SqliteTrait 
+        where T: derive_sql::proxy::sqlite::SqliteTrait 
         { 
           conn: T,
         }
@@ -44,10 +44,10 @@ impl<'a> Sqlite<'a> {
     let from_rusqlite_impl = {
       let doc = format!("Create a new instance from a `rusqlite` connection");
       quote::quote! {
-        impl std::convert::From<rusqlite::Connection> for #sqlite_ident <derive_sql::sqlite::Conn>
+        impl std::convert::From<rusqlite::Connection> for #sqlite_ident <derive_sql::proxy::sqlite::Conn>
         {
           #[doc = #doc]
-          fn from(v: rusqlite::Connection) -> Self { #sqlite_ident { conn: derive_sql::sqlite::Conn::from(v) } }
+          fn from(v: rusqlite::Connection) -> Self { #sqlite_ident { conn: derive_sql::proxy::sqlite::Conn::from(v) } }
         }
       }
     };
@@ -56,7 +56,7 @@ impl<'a> Sqlite<'a> {
       let doc = format!("Create a new instance from a connection implementing `SqliteTrait`");
       quote::quote! {
         impl<T> std::convert::From<T> for #sqlite_ident <T>
-        where T: derive_sql::sqlite::SqliteTrait
+        where T: derive_sql::proxy::sqlite::SqliteTrait
         {
           #[doc = #doc]
           fn from(conn: T) -> Self { #sqlite_ident { conn } }
@@ -92,7 +92,7 @@ impl<'a> Sqlite<'a> {
       let doc = format!("{doc}<br>SQL statement: `{statement}`");
       quote::quote! {
         #[doc = #doc]
-        pub fn create_table(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+        pub fn create_table(&mut self) -> std::result::Result<(), Box<dyn std::error::Error>> {
           let stmt = format!("{}", #statement);
           self.conn.execute(stmt.as_str(), ())?;
           Ok(())
@@ -106,7 +106,7 @@ impl<'a> Sqlite<'a> {
       let doc = format!("{doc}<br>SQL statement: `{statement}`");
       quote::quote! {
         #[doc = #doc]
-        fn count(&self, select: Self::Selector) -> Result<usize, Self::Error> {
+        fn count(&self, select: Self::Selector) -> std::result::Result<usize, Self::Error> {
           let stmt = format!("{} {}", #statement, select.statement());
           let r = self.conn.query_first(stmt.as_str(), [], |r| r.get(0))?;
           Ok(r)
@@ -124,7 +124,7 @@ impl<'a> Sqlite<'a> {
       let assignements = fields.iter().enumerate().map(|(i, _)| quote::quote! { r.get(#i)? } ).collect::<Vec<proc_macro2::TokenStream>>();
       quote::quote! {
         #[doc = #doc]
-        fn select(&self, select: Self::Selector) -> Result<Vec<Self::Item>, Self::Error> {
+        fn select(&self, select: Self::Selector) -> std::result::Result<Vec<Self::Item>, Self::Error> {
           let stmt = format!("{} {}", #statement, select.statement());
           let r = self.conn.query_map(stmt.as_str(), [], |r| Ok( #ident { #( #fields: #assignements ),* } ))?;
           Ok(r)
@@ -148,7 +148,7 @@ impl<'a> Sqlite<'a> {
       let params = fields.iter().map(|f| f.ident()).collect::<Vec<&syn::Ident>>();
       quote::quote! {
         #[doc = #doc]
-        fn insert(&mut self, mut item: Self::Item) -> Result<Self::Item, Self::Error> {
+        fn insert(&mut self, mut item: Self::Item) -> std::result::Result<Self::Item, Self::Error> {
           #( #functions )*
           let stmt = format!("{}", #statement);
           self.conn.execute(stmt.as_str(), ( #( &item.#params ),* ))?;
@@ -175,7 +175,7 @@ impl<'a> Sqlite<'a> {
 
       quote::quote! {
         #[doc = #doc]
-        fn update(&mut self, select: Self::Selector, mut item: Self::Item) -> Result<Self::Item, Self::Error> {
+        fn update(&mut self, select: Self::Selector, mut item: Self::Item) -> std::result::Result<Self::Item, Self::Error> {
           #( #functions )*
           let stmt = format!("{} {}", #statement, select.statement());
           self.conn.execute(stmt.as_str(), ( #( &item.#params ),* ))?;
@@ -190,7 +190,7 @@ impl<'a> Sqlite<'a> {
       let doc = format!("{doc}<br>SQL statement: `{statement}`");
       quote::quote! {
         #[doc = #doc]
-        fn delete(&mut self, select: Self::Selector) -> Result<(), Self::Error> {
+        fn delete(&mut self, select: Self::Selector) -> std::result::Result<(), Self::Error> {
           let stmt = format!("{} {}", #statement, select.statement());
           self.conn.execute(stmt.as_str(), ())?;
           Ok(())
@@ -204,7 +204,7 @@ impl<'a> Sqlite<'a> {
       let doc = format!("{doc}<br>SQL statement: `{statement}`");
       quote::quote! {
         #[doc = #doc]
-        fn delete_table(&mut self) -> Result<(), Self::Error> {
+        fn delete_table(&mut self) -> std::result::Result<(), Self::Error> {
           self.conn.execute(#statement, ())?;
           Ok(())
         }
@@ -217,14 +217,14 @@ impl<'a> Sqlite<'a> {
       #from_sqlite_trait_impl
 
       impl<T> #sqlite_ident <T>
-      where T: derive_sql::sqlite::SqliteTrait
+      where T: derive_sql::proxy::sqlite::SqliteTrait
       {
         #static_members
         #create_table
       }
 
       impl<T> derive_sql::Sqlable for #sqlite_ident <T>
-      where T: derive_sql::sqlite::SqliteTrait
+      where T: derive_sql::proxy::sqlite::SqliteTrait
       {
         type Item = #ident;
         type Error = Box<dyn std::error::Error>;

@@ -27,7 +27,7 @@
 //!
 //! let pool = ::mysql::Pool::new("mysql://test@localhost/simpledb").unwrap();
 //! let mut connection = pool.get_conn().unwrap();
-//! let mut db: PersonMysql<_> = derive_sql::mysql::Conn::from(connection).into();
+//! let mut db: PersonMysql<_> = derive_sql::proxy::mysql::Conn::from(connection).into();
 //!
 //! // initialise
 //! db.create_table().unwrap();

@@ -60,7 +60,7 @@
 //!   Param, Params, Row, TryFromRefRow,
 //!   ToParam,
 //! };
-//! use derive_sql::{filter, Field};
+//! use derive_sql::structs::{filter, Field};
 //! use derive_sql::Result;
 //!
 //! // Define a `struct` representing the data to be stored
@@ -178,7 +178,7 @@
 //! ```rust
 //! use derive_sql::{DeriveSqlStatement};
 //! use derive_sql::traits::{Table, Insert, Delete, Update, SelectV2};
-//! use derive_sql::{traits, filter, Field, Result};
+//! use derive_sql::{traits, structs::filter, structs::Field, Result};
 //!
 //! // Define a `struct` representing the data to be stored
 //! #[derive(DeriveSqlStatement)]
@@ -333,7 +333,7 @@
 
 pub mod traits;
 pub mod proxy;
-mod structs; pub use structs::{Field, filter, order};
+pub mod structs; // pub use structs::{Field, filter, order};
 
 #[cfg(feature="compatibility_v0_10")]
 mod sqlable; 
@@ -370,12 +370,12 @@ pub use selectable::SimpleOffset;
 /// Convenient struct for implementing an order by, ie a struct that generates the content of an `ORDER BY value ASC|DESC` clause
 pub use selectable::{SimpleOrder, Order};
 
-#[cfg(all(feature="sqlite", feature="compatibilty_v0_10"))]
+#[cfg(all(feature="sqlite", feature="compatibility_v0_10"))]
 /// Derive macro to implement the `Sqlable` trait for a struct with named fields so that instances of the struct
 /// can be saved, queried, stored to/from an SQLite database. Uses `rusqlite`. Requires `--features sqlite`.
 pub use derive_sql_sqlite::DeriveSqlite;
 
-#[cfg(all(feature="mysql", feature="compatibilty_v0_10"))]
+#[cfg(all(feature="mysql", feature="compatibility_v0_10"))]
 /// Derive macro to implement the `Sqlable` trait for a struct with named fields so that instances of the struct
 /// can be saved, queried, stored to/from a MySQL database. Uses `mysql`. Requires `--features mysql`.
 pub use derive_sql_mysql::DeriveMysql;

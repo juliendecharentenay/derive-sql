@@ -30,7 +30,7 @@ fn main() {
 }
 
 fn sample(conn: mysql::Conn) -> Result<(), Box<dyn std::error::Error>> {
-  let mut db: PersonMysql<_> = derive_sql::mysql::Log::default().with(derive_sql::mysql::Conn::from(conn)).into();
+  let mut db: PersonMysql<_> = derive_sql::proxy::mysql::Log::default().with(derive_sql::proxy::mysql::Conn::from(conn)).into();
 
   // Create Table in SQLite database
   log::info!("Create table");

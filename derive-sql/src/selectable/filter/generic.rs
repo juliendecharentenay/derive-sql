@@ -60,7 +60,7 @@ mod tests {
   use super::*;
 
   #[test]
-  fn it_outputs_correct_statement() -> Result<(), Box<dyn std::error::Error>> {
+  fn it_outputs_correct_statement() -> std::result::Result<(), Box<dyn std::error::Error>> {
     let g: Filter<u32> = ("user_id", Operator::Equal, 1.into()).into();
     assert!(FilterTrait::filter(&g).eq("`user_id` = 1"));
     Ok(())
@@ -116,7 +116,7 @@ mod tests {
   use super::*;
 
   #[test]
-  fn it_outputs_correct_statement() -> Result<(), Box<dyn std::error::Error>> {
+  fn it_outputs_correct_statement() -> std::result::Result<(), Box<dyn std::error::Error>> {
     let g: Generic<u32> = ("user_id", Operator::Equal, 1.into()).into();
     assert!(filter::Filterable::filter(&g).unwrap().eq("`user_id` = 1"));
     assert!(g.next().is_none());

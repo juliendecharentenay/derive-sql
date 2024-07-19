@@ -2,34 +2,34 @@ mod table; pub use table::artist;
 mod query;
 mod error; pub use error::{Result, MyError};
 
-type Conn = derive_sql::sqlite::Conn;
+type Conn = derive_sql::proxy::sqlite::Conn;
 
 struct AppState {
   conn: std::sync::Mutex<String>,
 }
 
-impl std::convert::TryFrom<&AppState> for artist::ArtistSqlite<derive_sql::sqlite::Conn> {
+impl std::convert::TryFrom<&AppState> for artist::ArtistSqlite<derive_sql::proxy::sqlite::Conn> {
   type Error = MyError;
-  fn try_from(v: &AppState) -> Result<artist::ArtistSqlite<derive_sql::sqlite::Conn>> {
+  fn try_from(v: &AppState) -> Result<artist::ArtistSqlite<derive_sql::proxy::sqlite::Conn>> {
     let mut db: artist::ArtistSqlite<_> = v.try_into()
-    .map(|c: derive_sql::sqlite::Conn| c.into())?;
+    .map(|c: derive_sql::proxy::sqlite::Conn| c.into())?;
     let _ = db.create_table()?;
     Ok(db)
   }
 }
 
-impl std::convert::TryFrom<&AppState> for derive_sql::sqlite::Conn {
+impl std::convert::TryFrom<&AppState> for derive_sql::proxy::sqlite::Conn {
   type Error = MyError;
-  fn try_from(v: &AppState) -> Result<derive_sql::sqlite::Conn> {
+  fn try_from(v: &AppState) -> Result<derive_sql::proxy::sqlite::Conn> {
     let path = v.conn.lock().unwrap();
     Ok(rusqlite::Connection::open(path.as_str())?.into())
   }
 }
 
 /*
-impl<'a> std::convert::TryFrom<&'a AppState> for &'a derive_sql::sqlite::Conn {
+impl<'a> std::convert::TryFrom<&'a AppState> for &'a derive_sql::proxy::sqlite::Conn {
   type Error = MyError;
-  fn try_from(v: &'a AppState) -> Result<&'a derive_sql::sqlite::Conn> {
+  fn try_from(v: &'a AppState) -> Result<&'a derive_sql::proxy::sqlite::Conn> {
     match &*v.conn.lock().unwrap() {
       Conn::Unset => Err(MyError::ConnectionNotInitialized),
       Conn::Sqlite((_, conn)) => Ok(conn),

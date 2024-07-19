@@ -1,7 +1,7 @@
 //! Simple example
 //! Run with `cargo run --example simple --features mysql`
 //!
-use derive_sql::{traits, Field, filter, order};
+use derive_sql::{traits, structs::Field, structs::filter, structs::order};
 
 fn init_logger() {
   let _ = env_logger::builder()

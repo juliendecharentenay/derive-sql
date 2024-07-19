@@ -28,7 +28,7 @@ fn main() {
 }
 
 fn sample(conn: rusqlite::Connection) -> Result<(), Box<dyn std::error::Error>> {
-  let mut db: PersonSqlite<_> = derive_sql::sqlite::Log::default().with(derive_sql::sqlite::Conn::from(conn)).into();
+  let mut db: PersonSqlite<_> = derive_sql::proxy::sqlite::Log::default().with(derive_sql::proxy::sqlite::Conn::from(conn)).into();
 
   // Create Table in SQLite database
   log::info!("Create table");

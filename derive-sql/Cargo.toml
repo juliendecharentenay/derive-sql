@@ -20,14 +20,14 @@ thiserror = "1"
 enum_dispatch = { version = "0" }
 chrono = { version = "0" }
 
-derive-sql-statement = { version = "0" }
-## Dev derive-sql-statement = { path = "../extras/derive-sql-statement" }
+## Pub derive-sql-statement = { version = "0" }
+derive-sql-statement = { path = "../extras/derive-sql-statement" }
 
-derive-sql-sqlite = { version = "0", optional = true }
-## Dev derive-sql-sqlite = { path = "../extras/derive-sql-sqlite", optional = true }
+## Pub derive-sql-sqlite = { version = "0", optional = true }
+derive-sql-sqlite = { path = "../extras/derive-sql-sqlite", optional = true }
 
-derive-sql-mysql = { version = "0", optional = true }
-## Dev derive-sql-mysql = { path = "../extras/derive-sql-mysql", optional = true }
+## Pub derive-sql-mysql = { version = "0", optional = true }
+derive-sql-mysql = { path = "../extras/derive-sql-mysql", optional = true }
 
 [features]
 default = [ ]

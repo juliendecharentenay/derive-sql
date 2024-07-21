@@ -16,15 +16,15 @@ quote = "1"
 proc-macro2 = "1"
 attribute-derive = "0.8.1"
 
-derive-sql-common = { version = "0" }
-## Dev derive-sql-common = { path = "../derive-sql-common" }
+## Pub derive-sql-common = { version = "0" }
+derive-sql-common = { path = "../derive-sql-common" }
 
 [dev-dependencies]
 # chrono = { version = "0" }
 rusqlite = { version = "0", features = [ "chrono" ] }
 env_logger = "0"
 log = "0"
-derive-sql = { version = "0", features = [ "sqlite" ] }
-## Dev derive-sql = { path = "../../derive-sql", features = [ "sqlite" ] }
+## Pub derive-sql = { version = "0", features = [ "sqlite" ] }
+derive-sql = { path = "../../derive-sql", features = [ "sqlite" ] }
 
 

@@ -140,9 +140,37 @@ pub trait Row {
   }
 }
 
+/// Trait to be implemented to allow a `Row` to be converted into an object
 pub trait TryFromRefRow<R> 
 where R: Row,
 {
   fn try_from(r: &R) -> Result<Self> where Self: Sized;
 }
 
+impl<R, T> TryFromRefRow<R> for T
+where R: Row,
+      T: TryFromValue + Sized,
+{
+  fn try_from(r: &R) -> Result<Self> {
+    Ok(r.get(0).ok_or(Error::RowItemNotFound(0))??)
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn it_retrieves_a_string() -> Result<()> {
+    struct MyRow {}
+    impl Row for MyRow { fn get_value(&self, i: usize) -> Option<Result<Value>> { Some(Ok(Value::Text(format!("hello")))) } }
+    let r: String = <String as TryFromRefRow<_>>::try_from(&MyRow {})?;
+    assert!(r.eq("hello"));
+
+    struct MyRow2 {}
+    impl Row for MyRow2 { fn get_value(&self, i: usize) -> Option<Result<Value>> { None } }
+    assert!(<String as TryFromRefRow<_>>::try_from(&MyRow2 {}).is_err());
+
+    Ok(())
+  }
+}

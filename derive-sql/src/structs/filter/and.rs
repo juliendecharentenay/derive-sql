@@ -93,7 +93,7 @@ mod tests {
   }
 
   #[test]
-  fn it_combines_filter() -> DeriveSqlResult<()> {
+  fn it_combines_filter() -> Result<()> {
     use traits::Filter;
 
     let and: And<_, _, _, _, _, _> = (WordOne {}, WordOne {}).into();

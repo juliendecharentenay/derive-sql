@@ -47,6 +47,42 @@ impl TryFromValue for bool {
   }
 } 
 
+impl TryFromValue for usize {
+  fn try_from(v: Value) -> Result<Self> { 
+    match v {
+      Value::UInteger(v) => Ok(v.try_into()?),
+      Value::Integer(v)  => Ok(v.try_into()?),
+#[cfg(feature = "mysql")]
+      Value::MysqlValue(v) => Ok(::mysql::from_value_opt(v)?),
+      _ => Err(Error::InvalidTypeForFrom("usize".to_string(), format!("{v:?}"))),
+    }
+  }
+} 
+
+impl TryFromValue for u8 {
+  fn try_from(v: Value) -> Result<Self> { 
+    match v {
+      Value::UInteger(v) => Ok(v.try_into()?),
+      Value::Integer(v)  => Ok(v.try_into()?),
+#[cfg(feature = "mysql")]
+      Value::MysqlValue(v) => Ok(::mysql::from_value_opt(v)?),
+      _ => Err(Error::InvalidTypeForFrom("u8".to_string(), format!("{v:?}"))),
+    }
+  }
+} 
+
+impl TryFromValue for u16 {
+  fn try_from(v: Value) -> Result<Self> { 
+    match v {
+      Value::UInteger(v) => Ok(v.try_into()?),
+      Value::Integer(v)  => Ok(v.try_into()?),
+#[cfg(feature = "mysql")]
+      Value::MysqlValue(v) => Ok(::mysql::from_value_opt(v)?),
+      _ => Err(Error::InvalidTypeForFrom("u16".to_string(), format!("{v:?}"))),
+    }
+  }
+} 
+
 impl TryFromValue for u32 {
   fn try_from(v: Value) -> Result<Self> { 
     match v {
@@ -59,6 +95,62 @@ impl TryFromValue for u32 {
   }
 } 
 
+impl TryFromValue for u64 {
+  fn try_from(v: Value) -> Result<Self> { 
+    match v {
+      Value::UInteger(v) => Ok(v),
+      Value::Integer(v)  => Ok(v.try_into()?),
+#[cfg(feature = "mysql")]
+      Value::MysqlValue(v) => Ok(::mysql::from_value_opt(v)?),
+      _ => Err(Error::InvalidTypeForFrom("u64".to_string(), format!("{v:?}"))),
+    }
+  }
+} 
+
+impl TryFromValue for isize {
+  fn try_from(v: Value) -> Result<Self> { 
+    match v {
+      Value::Integer(v) => Ok(v.try_into()?),
+#[cfg(feature = "mysql")]
+      Value::MysqlValue(v) => Ok(::mysql::from_value_opt(v)?),
+      _ => Err(Error::InvalidTypeFor("isize".to_string())),
+    }
+  }
+}
+
+impl TryFromValue for i8 {
+  fn try_from(v: Value) -> Result<Self> { 
+    match v {
+      Value::Integer(v) => Ok(v.try_into()?),
+#[cfg(feature = "mysql")]
+      Value::MysqlValue(v) => Ok(::mysql::from_value_opt(v)?),
+      _ => Err(Error::InvalidTypeFor("i8".to_string())),
+    }
+  }
+}
+
+impl TryFromValue for i16 {
+  fn try_from(v: Value) -> Result<Self> { 
+    match v {
+      Value::Integer(v) => Ok(v.try_into()?),
+#[cfg(feature = "mysql")]
+      Value::MysqlValue(v) => Ok(::mysql::from_value_opt(v)?),
+      _ => Err(Error::InvalidTypeFor("i16".to_string())),
+    }
+  }
+}
+
+impl TryFromValue for i32 {
+  fn try_from(v: Value) -> Result<Self> { 
+    match v {
+      Value::Integer(v) => Ok(v.try_into()?),
+#[cfg(feature = "mysql")]
+      Value::MysqlValue(v) => Ok(::mysql::from_value_opt(v)?),
+      _ => Err(Error::InvalidTypeFor("i32".to_string())),
+    }
+  }
+}
+
 impl TryFromValue for i64 {
   fn try_from(v: Value) -> Result<Self> { 
     match v {
@@ -66,6 +158,17 @@ impl TryFromValue for i64 {
 #[cfg(feature = "mysql")]
       Value::MysqlValue(v) => Ok(::mysql::from_value_opt(v)?),
       _ => Err(Error::InvalidTypeFor("i64".to_string())),
+    }
+  }
+}
+
+impl TryFromValue for f32 {
+  fn try_from(v: Value) -> Result<Self> { 
+    match v {
+      Value::Real(v) => Ok(v as f32),
+#[cfg(feature = "mysql")]
+      Value::MysqlValue(v) => Ok(::mysql::from_value_opt(v)?),
+      _ => Err(Error::InvalidTypeFor("f32".to_string())),
     }
   }
 }
@@ -163,12 +266,12 @@ mod tests {
   #[test]
   fn it_retrieves_a_string() -> Result<()> {
     struct MyRow {}
-    impl Row for MyRow { fn get_value(&self, i: usize) -> Option<Result<Value>> { Some(Ok(Value::Text(format!("hello")))) } }
+    impl Row for MyRow { fn get_value(&self, _i: usize) -> Option<Result<Value>> { Some(Ok(Value::Text(format!("hello")))) } }
     let r: String = <String as TryFromRefRow<_>>::try_from(&MyRow {})?;
     assert!(r.eq("hello"));
 
     struct MyRow2 {}
-    impl Row for MyRow2 { fn get_value(&self, i: usize) -> Option<Result<Value>> { None } }
+    impl Row for MyRow2 { fn get_value(&self, _i: usize) -> Option<Result<Value>> { None } }
     assert!(<String as TryFromRefRow<_>>::try_from(&MyRow2 {}).is_err());
 
     Ok(())

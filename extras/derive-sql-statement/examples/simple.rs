@@ -13,7 +13,7 @@ fn init_logger() {
 #[derive(derive_sql_statement::DeriveSqlStatement)]
 struct Person {
   name: String,
-  age: u32,
+  age: usize,
   active: bool,
   nickname: Option<String>,
 }
@@ -87,7 +87,11 @@ where Conn: traits::Connection<Row>,
 
   // Retrieve the first person with the name "Jack"
   log::info!("Retrieve list of persons with filter and limit...");
-  let persons: Vec<Person> = db.select_with_filter_order_limit_offset(conn, &Field::from("name").eq("Jack"), &order::None::default(), 1, 0)?;
+  let persons: Vec<Person> = db.select_with_filter_order_limit_offset(conn, 
+    &Field::from_table_column("person", "name").eq("Jack"), 
+    &order::None::default(), 
+    1, 
+    0)?;
   assert!(persons.len() == 1);
   assert!(persons[0].age == 44);
   assert!(persons[0].nickname.is_none());

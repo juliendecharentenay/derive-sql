@@ -9,14 +9,21 @@ pub enum Operator
 /// Describe a single ordering condition using a label and an operator
 pub struct Condition
 {
+  table: Option<String>,
   label: String,
   operator: Operator,
 }
 
 impl Condition
 {
+  /// Create a condition from a table name, column name and an operator
+  pub fn from_table_label_operator(table: Option<String>, label: String, operator: Operator) -> Condition {
+    Condition { table, label, operator }
+  }
+
+  /// Create a condition from a column name and an operator
   pub fn from_label_operator(label: String, operator: Operator) -> Condition {
-    Condition { label, operator }
+    Condition { table: None, label, operator }
   }
 }
 
@@ -24,10 +31,14 @@ impl traits::Order for Condition
 {
   /// Return the `ORDER BY` clause associated with the condition
   fn as_order_clause(&self) -> String {
-    let label = &self.label;
+    let label = if let Some(table) = &self.table {
+      format!("`{table}`.`{label}`", label=&self.label)
+    } else {
+      format!("`{label}`", label=&self.label)
+    };
     match &self.operator {
-      Operator::Ascending   => format!("`{label}` ASC"),
-      Operator::Descending  => format!("`{label}` DESC"),
+      Operator::Ascending   => format!("{label} ASC"),
+      Operator::Descending  => format!("{label} DESC"),
     }
   }
 }

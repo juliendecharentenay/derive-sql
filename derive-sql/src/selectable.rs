@@ -1,3 +1,4 @@
+#[cfg(test)]
 use super::*;
 
 mod value; // use value::Value;

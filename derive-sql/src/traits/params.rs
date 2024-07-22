@@ -110,8 +110,17 @@ impl TryFrom<Param> for ::mysql::Value {
 pub trait ToParam        { fn to_param(&self) -> Result<Param>; }
 impl ToParam for Vec<u8> { fn to_param(&self) -> Result<Param> { Ok(Param::Bytes(self.clone())) } }
 impl ToParam for bool    { fn to_param(&self) -> Result<Param> { Ok(Param::Int(if *self { 1 } else { 0 })) } }
+impl ToParam for usize   { fn to_param(&self) -> Result<Param> { Ok(Param::Int((*self).try_into()?)) } }
+impl ToParam for u8      { fn to_param(&self) -> Result<Param> { Ok(Param::Int((*self).into())) } }
+impl ToParam for u16     { fn to_param(&self) -> Result<Param> { Ok(Param::Int((*self).into())) } }
 impl ToParam for u32     { fn to_param(&self) -> Result<Param> { Ok(Param::Int((*self).into())) } }
+impl ToParam for u64     { fn to_param(&self) -> Result<Param> { Ok(Param::Int((*self).try_into()?)) } }
+impl ToParam for isize   { fn to_param(&self) -> Result<Param> { Ok(Param::Int((*self).try_into()?)) } }
+impl ToParam for i8      { fn to_param(&self) -> Result<Param> { Ok(Param::Int((*self).into())) } }
+impl ToParam for i16     { fn to_param(&self) -> Result<Param> { Ok(Param::Int((*self).into())) } }
+impl ToParam for i32     { fn to_param(&self) -> Result<Param> { Ok(Param::Int((*self).into())) } }
 impl ToParam for i64     { fn to_param(&self) -> Result<Param> { Ok(Param::Int(*self)) } }
+impl ToParam for f32     { fn to_param(&self) -> Result<Param> { Ok(Param::Double((*self).into())) } }
 impl ToParam for f64     { fn to_param(&self) -> Result<Param> { Ok(Param::Double(*self)) } }
 impl ToParam for String  { fn to_param(&self) -> Result<Param> { Ok(Param::Text(self.clone())) } }
 impl ToParam for chrono::naive::NaiveDate { fn to_param(&self) -> Result<Param> { Ok(Param::NaiveDate(self.clone())) } }

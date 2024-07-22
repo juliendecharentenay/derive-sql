@@ -17,6 +17,7 @@ where T: std::fmt::Display
 pub struct Condition<T>
 where T: std::fmt::Display
 {
+  table: Option<String>,
   label: String,
   operator: Operator<T>,
 }
@@ -24,8 +25,12 @@ where T: std::fmt::Display
 impl<T> Condition<T>
 where T: std::fmt::Display
 {
+  pub fn from_table_label_operator(table: Option<String>, label: String, operator: Operator<T>) -> Condition<T> {
+    Condition { table, label, operator }
+  }
+
   pub fn from_label_operator(label: String, operator: Operator<T>) -> Condition<T> {
-    Condition { label, operator }
+    Condition { table: None, label, operator }
   }
 }
 
@@ -34,16 +39,20 @@ where T: std::fmt::Display
 {
   /// Return the `WHERE` clause associated with the condition
   fn filter(&self) -> String {
-    let label = &self.label;
+    let label = if let Some(table) = &self.table {
+      format!("`{table}`.`{label}`", label=self.label)
+    } else {
+      format!("`{label}`", label=self.label)
+    };
     match &self.operator {
-      Operator::IsNull          => format!("`{label}` IS NULL"),
-      Operator::IsNotNull       => format!("`{label}` IS NOT NULL"),
-      Operator::Equal(v)        => format!("`{label}` = {v}"),
-      Operator::NotEqual(v)     => format!("`{label}` != {v}"),
-      Operator::GreaterThan(v)  => format!("`{label}` > {v}"),
-      Operator::GreaterEqual(v) => format!("`{label}` >= {v}"),
-      Operator::LowerThan(v)    => format!("`{label}` < {v}"),
-      Operator::LowerEqual(v)   => format!("`{label}` <= {v}"),
+      Operator::IsNull          => format!("{label} IS NULL"),
+      Operator::IsNotNull       => format!("{label} IS NOT NULL"),
+      Operator::Equal(v)        => format!("{label} = {v}"),
+      Operator::NotEqual(v)     => format!("{label} != {v}"),
+      Operator::GreaterThan(v)  => format!("{label} > {v}"),
+      Operator::GreaterEqual(v) => format!("{label} >= {v}"),
+      Operator::LowerThan(v)    => format!("{label} < {v}"),
+      Operator::LowerEqual(v)   => format!("{label} <= {v}"),
     }
   }
 }

@@ -12,20 +12,30 @@ use super::*;
 ///
 /// let condition: order::Condition = Field::from("name").ascending();
 /// assert!(condition.as_order_clause().eq("`name` ASC"));
+///
+/// let condition: filter::Condition<_> = Field::from_table_column("table", "col").eq("val");
+/// assert!(condition.filter().eq("`table`.`col` = 'val'"));
 /// ```
 pub struct Field {
+  table: Option<String>,
   label: String,
 }
 
 impl Field {
   /// Create a new field with the given label
   pub fn from(label: &str) -> Field {
-    Field { label: label.to_string() }
+    Field { table: None, label: label.to_string() }
+  }
+
+  /// Create a new field with the given label
+  pub fn from_table_column(table: &str, label: &str) -> Field {
+    Field { table: Some(table.to_string()), label: label.to_string() }
   }
 
   /// Generate a test on Null
   pub fn is_none(self) -> filter::Condition<bool> {
-    filter::Condition::from_label_operator(
+    filter::Condition::from_table_label_operator(
+      self.table,
       self.label,
       filter::Operator::IsNull,
     )
@@ -33,7 +43,8 @@ impl Field {
 
   /// Generate a test on Not Null
   pub fn is_some(self) -> filter::Condition<bool> {
-    filter::Condition::from_label_operator(
+    filter::Condition::from_table_label_operator(
+      self.table,
       self.label,
       filter::Operator::IsNotNull,
     )
@@ -44,7 +55,8 @@ impl Field {
   where filter::Value<T>: std::convert::From<T>,
         T: std::fmt::Display,
   {
-    filter::Condition::from_label_operator(
+    filter::Condition::from_table_label_operator(
+      self.table,
       self.label,
       filter::Operator::Equal(t.into()),
     )
@@ -55,7 +67,8 @@ impl Field {
   where filter::Value<T>: std::convert::From<T>,
         T: std::fmt::Display,
   {
-    filter::Condition::from_label_operator(
+    filter::Condition::from_table_label_operator(
+      self.table,
       self.label,
       filter::Operator::NotEqual(t.into()),
     )
@@ -66,7 +79,8 @@ impl Field {
   where filter::Value<T>: std::convert::From<T>,
         T: std::fmt::Display
   {
-    filter::Condition::from_label_operator(
+    filter::Condition::from_table_label_operator(
+      self.table,
       self.label,
       filter::Operator::GreaterThan(t.into()),
     )
@@ -77,7 +91,8 @@ impl Field {
   where filter::Value<T>: std::convert::From<T>,
         T: std::fmt::Display
   {
-    filter::Condition::from_label_operator(
+    filter::Condition::from_table_label_operator(
+      self.table,
       self.label,
       filter::Operator::GreaterEqual(t.into()),
     )
@@ -88,7 +103,8 @@ impl Field {
   where filter::Value<T>: std::convert::From<T>,
         T: std::fmt::Display
   {
-    filter::Condition::from_label_operator(
+    filter::Condition::from_table_label_operator(
+      self.table,
       self.label,
       filter::Operator::LowerThan(t.into()),
     )
@@ -99,7 +115,8 @@ impl Field {
   where filter::Value<T>: std::convert::From<T>,
         T: std::fmt::Display
   {
-    filter::Condition::from_label_operator(
+    filter::Condition::from_table_label_operator(
+      self.table,
       self.label,
       filter::Operator::LowerEqual(t.into()),
     )
@@ -108,7 +125,8 @@ impl Field {
   /// Generate an ascending order clause condition
   pub fn ascending(self) -> order::Condition
   {
-    order::Condition::from_label_operator(
+    order::Condition::from_table_label_operator(
+      self.table,
       self.label,
       order::Operator::Ascending,
     )
@@ -117,7 +135,8 @@ impl Field {
   /// Generate a descending order clause condition
   pub fn descending(self) -> order::Condition
   {
-    order::Condition::from_label_operator(
+    order::Condition::from_table_label_operator(
+      self.table,
       self.label,
       order::Operator::Descending,
     )

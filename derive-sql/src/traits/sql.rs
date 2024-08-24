@@ -63,6 +63,20 @@ where S: insert::InsertStatement,
   }
 }
 
+impl<'a, C, R, T, S> insert::InsertMultiple<'a, C, R, T> for S
+where S: insert::InsertStatement,
+      T: params::Params + 'a,
+      C: Connection<R>,
+      R: Row,
+{
+  fn insert_multiple<I>(&self, conn: &mut C, objects: I) -> Result<()> 
+  where I: core::iter::IntoIterator<Item = &'a T>
+  {
+    conn.execute_with_params_iterator(self.insert_stmt()?, objects)?;
+    Ok(())
+  }
+}
+
 impl<C, R, T, S> select::Select<C, R, T> for S
 where S: select::SelectStatement,
       T: row::TryFromRefRow<R>,

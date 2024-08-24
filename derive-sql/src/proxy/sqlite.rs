@@ -82,16 +82,9 @@ impl traits::Row for Row {
   }
 }
 
-impl traits::Connection<Row> for rusqlite::Connection
+fn execute<'a, P>(statement: &mut rusqlite::Statement<'a>, params: &P) -> Result<()>
+where P: traits::Params,
 {
-  fn flavor(&self) -> traits::Flavor { traits::Flavor::SQLite }
-
-  fn execute_with_params<S, P>(&mut self, query: S, params: &P) -> Result<()>
-  where S: std::convert::AsRef<str>,
-        P: traits::Params,
-  {
-    let mut statement = self.prepare(query.as_ref())?;
-
     let params: Vec<traits::Param> = params.as_vec_params()?;
     let _ = match params.len() {
       0 => statement.execute(())?,
@@ -110,7 +103,32 @@ impl traits::Connection<Row> for rusqlite::Connection
       // _ => { self.conn.execute(query, params.iter().collect::<Vec<&traits::Param>>().as_slice())?; },
       _ => { return Err(Error::SqliteMaximumNumberOfParametersExceeded(12, params.len())); },
     };
+    Ok(())
+}
 
+impl traits::Connection<Row> for rusqlite::Connection
+{
+  fn flavor(&self) -> traits::Flavor { traits::Flavor::SQLite }
+
+  fn execute_with_params<S, P>(&mut self, query: S, params: &P) -> Result<()>
+  where S: std::convert::AsRef<str>,
+        P: traits::Params,
+  {
+    let mut statement = self.prepare(query.as_ref())?;
+    execute(&mut statement, params)
+  }
+
+  fn execute_with_params_iterator<'a, S, I, P>(&mut self, query: S, params_iter: I) -> Result<()>
+  where S: std::convert::AsRef<str>,
+        P: traits::Params + 'a,
+        I: core::iter::IntoIterator<Item = &'a P>
+  {
+    let tx = self.transaction()?;
+    {
+      let mut statement = tx.prepare(query.as_ref())?;
+      for params in params_iter { execute(&mut statement, params)?; }
+    }
+    tx.commit()?;
     Ok(())
   }
 

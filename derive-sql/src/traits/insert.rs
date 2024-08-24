@@ -10,3 +10,11 @@ where C: Connection<R>,
 {
   fn insert(&self, conn: &mut C, object: &T) -> Result<()>;
 }
+
+pub trait InsertMultiple<'a, C, R, T: 'a>
+where C: Connection<R>,
+      R: Row,
+{
+  fn insert_multiple<I>(&self, conn: &mut C, objects: I) -> Result<()>
+  where I: core::iter::IntoIterator<Item = &'a T>;
+}

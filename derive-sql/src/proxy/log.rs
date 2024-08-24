@@ -74,6 +74,15 @@ where T: traits::Connection<R>,
     self.conn.execute_with_params(query, params)
   }
 
+  fn execute_with_params_iterator<'b, S, I, P>(&mut self, query: S, params_iter: I) -> Result<()>
+  where S: std::convert::AsRef<str>,
+        P: traits::Params + 'b,
+        I: core::iter::IntoIterator<Item = &'b P>
+  {
+    self.log(query.as_ref());
+    self.conn.execute_with_params_iterator(query, params_iter)
+  }
+
 /*
   fn execute_with_params_rows<S, P>(&mut self, query: S, params: &P) -> Result<Vec<R>>
   where S: std::convert::AsRef<str>,

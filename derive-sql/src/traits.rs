@@ -27,6 +27,12 @@ where R: Row,
   where S: std::convert::AsRef<str>,
         P: Params;
 
+  /// Implements an `execute` statement over an iterator of parameters
+  fn execute_with_params_iterator<'a, S, I, P>(&mut self, query: S, params_iter: I) -> Result<()>
+  where S: std::convert::AsRef<str>,
+        P: Params + 'a,
+        I: core::iter::IntoIterator<Item = &'a P>;
+
   /*
   /// Implements an `execute` statement returning the modified elements
   fn execute_with_params_rows<S, P>(&mut self, query: S, params: &P) -> Result<Vec<R>>
@@ -192,7 +198,7 @@ where R: Row,
 
 mod sql;    // pub use sql::Sql;
 mod table;  pub use table::{Table, TableStatement};
-mod insert; pub use insert::{Insert, InsertStatement};
+mod insert; pub use insert::{Insert, InsertMultiple, InsertStatement};
 mod select; pub use select::{Select as SelectV2, SelectStatement};
 mod update; pub use update::{Update, UpdateStatement};
 mod delete; pub use delete::{Delete, DeleteStatement};

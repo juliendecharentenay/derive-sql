@@ -331,6 +331,14 @@
 //! 
 //!
 
+#[cfg(feature="sqlite")]
+/// Re-export `rusqlite` library used
+pub use rusqlite;
+
+#[cfg(feature="mysql")]
+/// Re-export `mysql` library used
+pub use mysql;
+
 pub mod traits;
 pub mod proxy;
 pub mod structs; // pub use structs::{Field, filter, order};

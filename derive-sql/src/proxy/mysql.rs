@@ -159,6 +159,23 @@ where T: ::mysql::prelude::Queryable,
     Ok(())
   }
 
+  fn execute_with_params_iterator<'a, S, I, P>(&mut self, query: S, params_iter: I) -> Result<()>
+  where S: std::convert::AsRef<str>,
+        P: traits::Params + 'a,
+        I: core::iter::IntoIterator<Item = &'a P>
+  {
+    let params_arr = params_iter
+      .into_iter()
+      .map(|params| 
+        params.as_vec_params()?.into_iter()
+        .map(|p| std::convert::TryInto::<::mysql::Value>::try_into(p))
+        .collect::<Result<Vec<::mysql::Value>>>()
+      )
+      .collect::<Result<Vec<Vec<::mysql::Value>>>>()?;
+    self.exec_batch(query, params_arr.into_iter())?;
+    Ok(())
+  }
+
 /*
   fn execute_with_params_rows<S, P>(&mut self, query: S, params: &P) -> Result<Vec<Row>>
   where S: std::convert::AsRef<str>,

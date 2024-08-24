@@ -13,7 +13,7 @@ repository = "https://github.com/juliendecharentenay/derive-sql"
 [dependencies]
 rusqlite = { version = "0", features = [ "vtab", "chrono", ], optional = true }
 fallible-iterator = { version = "0", optional = true }
-mysql    = { version = "24", optional = true }
+mysql    = { version = "25", optional = true }
 mysql_common = { version = "0", features = [ "chrono" ], optional = true }
 log = "0"
 thiserror = "1"

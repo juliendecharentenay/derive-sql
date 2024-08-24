@@ -8,6 +8,7 @@ pub enum SqlType {
   OptionText,
   Boolean,
   Float,
+  OptionFloat,
   DateTime,
   Date,
   Unsupported,
@@ -49,6 +50,8 @@ impl SqlType {
           }) if ident == "Option" => {
             match args.last() {
               Some(syn::GenericArgument::Type(syn::Type::Path(syn::TypePath { path, .. }))) if path.is_ident("String") => SqlType::OptionText,
+              Some(syn::GenericArgument::Type(syn::Type::Path(syn::TypePath { path, .. }))) if path.is_ident("f32")    => SqlType::OptionFloat,
+              Some(syn::GenericArgument::Type(syn::Type::Path(syn::TypePath { path, .. }))) if path.is_ident("f64")    => SqlType::OptionFloat,
               _ => SqlType::Unsupported,
             }
           },
@@ -66,6 +69,7 @@ impl SqlType {
       SqlType::OptionText  => "TEXT",
       SqlType::Boolean     => "BOOL", // "BIT",
       SqlType::Float       => "FLOAT",
+      SqlType::OptionFloat => "FLOAT",
       SqlType::DateTime    => "DATETIME",
       SqlType::Date        => "DATE",
       SqlType::Unsupported => "", 

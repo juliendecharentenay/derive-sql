@@ -142,8 +142,27 @@ where T: ::mysql::prelude::Queryable,
   }
 }
 
+/// Define a trait that provide a transaction. This is required to allow
+/// `::mysql::Conn` and `::mysql::PoolConn` to both provide the same
+/// `start_transaction` interface.
+trait Transaction {
+  fn start_transaction(&mut self, tx_opts: ::mysql::TxOpts) -> Result<::mysql::Transaction>;
+}
+
+impl Transaction for ::mysql::Conn {
+  fn start_transaction(&mut self, tx_opts: ::mysql::TxOpts) -> Result<::mysql::Transaction> {
+    Ok(self.start_transaction(tx_opts)?)
+  }
+}
+
+impl Transaction for ::mysql::PooledConn {
+  fn start_transaction(&mut self, tx_opts: ::mysql::TxOpts) -> Result<::mysql::Transaction> {
+    Ok(self.start_transaction(tx_opts)?)
+  }
+}
+
 impl<T> traits::Connection<Row> for T
-where T: ::mysql::prelude::Queryable,
+where T: ::mysql::prelude::Queryable + Transaction,
 {
   fn flavor(&self) -> traits::Flavor { traits::Flavor::MySQL }
 
@@ -164,6 +183,7 @@ where T: ::mysql::prelude::Queryable,
         P: traits::Params + 'a,
         I: core::iter::IntoIterator<Item = &'a P>
   {
+    use ::mysql::prelude::Queryable;
     let params_arr = params_iter
       .into_iter()
       .map(|params| 
@@ -172,7 +192,11 @@ where T: ::mysql::prelude::Queryable,
         .collect::<Result<Vec<::mysql::Value>>>()
       )
       .collect::<Result<Vec<Vec<::mysql::Value>>>>()?;
-    self.exec_batch(query, params_arr.into_iter())?;
+
+    let mut conn = self.start_transaction(::mysql::TxOpts::default())?;
+    let statement = conn.prep(query)?;
+    conn.exec_batch(statement, params_arr.into_iter())?;
+    conn.commit()?;
     Ok(())
   }
 

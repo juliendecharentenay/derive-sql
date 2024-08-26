@@ -1,6 +1,6 @@
 [package]
 name = "derive-sql-common"
-version = "0.12.0"
+version = "0.12.1"
 edition = "2021"
 license = "MIT"
 description = "Common functions supporting `derive-sql` and associated crates"

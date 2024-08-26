@@ -6,6 +6,6 @@ members = [
   "extras/derive-sql-mysql", 
   "extras/derive-sql-common",
   "extras/derive-sql-statement",
-  "examples/mona",
+  "examples/moma",
 ]
 

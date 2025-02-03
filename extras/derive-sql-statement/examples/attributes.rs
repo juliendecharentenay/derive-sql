@@ -1,7 +1,7 @@
 //! Example demonstrating container and field attributes
 //! Run with `cargo run --example attributes --features mysql,sqlite`
 //!
-use derive_sql::{traits, Result};
+use derive_sql::{traits, Result, mysql};
 
 fn init_logger() {
   let _ = env_logger::builder()

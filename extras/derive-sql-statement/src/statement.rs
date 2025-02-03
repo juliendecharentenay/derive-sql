@@ -31,10 +31,24 @@ impl<'a> Statement<'a> {
       .collect::<Result<Vec<fields::Fields>, syn::Error>>()?;
 
     // Primary key of SQL type TEXT is not supported
-    if let Some(name) = fields.iter().fold(None, |r, f| r.or_else(|| if f.is_primary_key() && (matches!(f.sql_type(), SqlType::Text) || matches!(f.sql_type(), SqlType::OptionText)) { Some(f.name()) } else { None })) {
+    if let Some(name) = fields.iter().fold(None, |r, f| r.or_else(|| if f.is_primary_key() && f.raw_type().eq("String") { Some(f.name()) } else { None })) {
       return Err(syn::Error::new(self.ast.ident.span(), format!("Field `{name}` error: Use of String, Option<String> primary key is not supported in `derive-sql` feature.")));
     }
 
+    // List of token that convert column names with flavor
+    let columns = fields.iter()
+        .map(|f| {
+          let ident = f.ident(); let s = format!("{ident}");
+          Ok(quote::quote! { #ident = conn.flavor().column(#s)? })
+        })
+        .collect::<syn::parse::Result<Vec<proc_macro2::TokenStream>>>()?;
+     let columns_types = fields.iter()
+       .map(|f| {
+         let ident = f.ident(); let ident_type = quote::format_ident!("{ident}_type");
+         let ty = f.raw_type().to_string();
+         Ok(quote::quote! { let #ident_type = conn.flavor().sql_type(#ty)?; })
+       })
+       .collect::<syn::parse::Result<Vec<proc_macro2::TokenStream>>>()?;
 
     let declaration = {
       let doc = format!("Wrapper struct to query item of type `{ident}` from SQL databases using `derive-sql` crate");
@@ -57,7 +71,7 @@ impl<'a> Statement<'a> {
       let statement = format!("{}",
         {
           let mut a = fields.iter()
-          .map(|f| Ok(format!("`{ident}` {sql_type}", ident = f.ident(), sql_type = f.sql_type().to_string())) )
+          .map(|f| Ok(format!("{{{ident}}} {{{ident}_type}}", ident = f.ident()))) //, sql_type = f.sql_type().to_string())) )
           .collect::<syn::parse::Result<Vec<String>>>()?;
 
           if let Some(primary_key) = fields.iter().fold(None, |r, f| r.or_else(|| if f.is_primary_key() { Some(f) } else { None })) {
@@ -69,32 +83,55 @@ impl<'a> Statement<'a> {
           a.join(", ")
         }
       );
-      let doc = format!("Create table `{table_name}` statement<br/>SQL statement:<br/>```CREATE TABLE {table_name} ( {statement} )```");
+
+      let doc = format!("Create table `{table_name}` statement<br/>SQL statement:<br/>```CREATE TABLE {table_name} ( {statement} )```",
+        statement = statement.replace("{","").replace("}",""));
       let create_stmt = quote::quote! {
         #[doc = #doc]
-        fn create_stmt(&self) -> derive_sql::Result<String> {
-          Ok(format!("CREATE TABLE {table_name} ( {statement} )", table_name = #table_name, statement = #statement))
+        fn create_stmt<C, R>(&self, conn: &C) -> derive_sql::Result<String>
+        where C: derive_sql::traits::Connection<R>,
+              R: derive_sql::traits::Row,
+        {
+          #(let #columns ; )*
+          #(#columns_types)*
+          Ok(format!("CREATE TABLE {table_name} ( {statement} )", 
+            table_name = conn.flavor().table(#table_name)?, 
+            statement = format!(#statement),
+          ))
         }
       };
 
-      let doc = format!("Create table if not exists `{table_name}` statement<br/>SQL statement:<br/>```CREATE TABLE IF NOT EXISTS {table_name} ( {statement} )```");
+      let doc = format!("Create table if not exists `{table_name}` statement<br/>SQL statement:<br/>```CREATE TABLE IF NOT EXISTS {table_name} ( {statement} )```",
+        statement = statement.replace("{","").replace("}",""));
       let create_if_not_exists_stmt = quote::quote! {
         #[doc = #doc]
-        fn create_if_not_exist_stmt(&self) -> derive_sql::Result<String> {
-          Ok(format!("CREATE TABLE IF NOT EXISTS {table_name} ( {statement} )", table_name = #table_name, statement = #statement))
+        fn create_if_not_exist_stmt<C, R>(&self, conn: &C) -> derive_sql::Result<String> 
+        where C: derive_sql::traits::Connection<R>,
+              R: derive_sql::traits::Row,
+        {
+          #(let #columns ; )*
+          #(#columns_types)*
+          Ok(format!("CREATE TABLE IF NOT EXISTS {table_name} ( {statement} )", 
+            table_name = conn.flavor().table(#table_name)?, 
+            statement = format!(#statement),
+          ))
         }
       };
 
       let doc = format!("Delete table if it exists `{table_name}` statement<br/>SQL statement:<br/>```DROP TABLE IF EXISTS {table_name}```");
       let drop_stmt = quote::quote! {
         #[doc = #doc]
-        fn drop_stmt(&self) -> derive_sql::Result<String> {
-          Ok(format!("DROP TABLE IF EXISTS {table_name}", table_name = #table_name))
+        fn drop_stmt<C, R>(&self, conn: &C) -> derive_sql::Result<String>
+        where C: derive_sql::traits::Connection<R>,
+              R: derive_sql::traits::Row,
+        {
+          Ok(format!("DROP TABLE IF EXISTS {table_name}", 
+            table_name = conn.flavor().table(#table_name)?))
         }
       };
 
       quote::quote! {
-        impl derive_sql::traits::TableStatement for #sql_ident {
+        impl derive_sql::traits::TableFlavoredStatement for #sql_ident {
           #create_stmt
           #create_if_not_exists_stmt
           #drop_stmt
@@ -103,49 +140,83 @@ impl<'a> Statement<'a> {
     };
 
     let select_statement = {
-      let statement = format!("SELECT {} FROM {table_name}",
-        fields.iter().map(|f| format!("`{}`",f.name())).collect::<Vec<String>>().join(", ")
+      let statement = fields.iter()
+        .map(|f| format!("{{{ident}}}", ident = f.ident())).collect::<Vec<String>>()
+        .join(", ");
+      let doc = format!("Statement to retrieve a list of `{ident}` items from database table `{table_name}`.<br/>SQL statement:<br/>```{statement}```",
+        statement = statement.replace("{","").replace("}",""),
       );
-      let doc = format!("Statement to retrieve a list of `{ident}` items from database table `{table_name}`.<br/>SQL statement:<br/>```{statement}```");
       quote::quote! {
-        impl derive_sql::traits::SelectStatement for #sql_ident {
+        impl derive_sql::traits::SelectFlavoredStatement for #sql_ident {
           #[doc = #doc]
-          fn select_stmt(&self) -> derive_sql::Result<String> {
-            Ok(format!("{}", #statement))
+          fn select_stmt<C, R>(&self, conn: &C) -> derive_sql::Result<String> 
+          where C: derive_sql::traits::Connection<R>,
+                R: derive_sql::traits::Row,
+          {
+            Ok(format!("SELECT {statement} FROM {table_name}", 
+              table_name = conn.flavor().table(#table_name)?,
+              statement = format!(#statement, #(#columns, )*),
+            ))
           }
         }
       }
     };
 
     let insert_statement = {
+      let columns_stmt = fields.iter().map(|f| format!("{{{ident}}}",ident = f.ident())).collect::<Vec<String>>().join(", ");
+      let values_stmt = fields.iter().map(|_| format!("?")).collect::<Vec<String>>().join(", ");
+      let values = fields.iter().enumerate().map(|(i,_)| quote::quote! { conn.flavor().value(#i)? }).collect::<Vec<proc_macro2::TokenStream>>();
+      /*
       let statement = format!("INSERT INTO {table_name} ({}) VALUES ({})",
         fields.iter().map(|f| format!("`{}`",f.name())).collect::<Vec<String>>().join(", "),
         fields.iter().map(|_| format!("?")).collect::<Vec<String>>().join(", "),
       );
-      let doc = format!("Insert an item {ident} into the database table {table_name}<br/>SQL statement:<br/>```{statement}```");
+      */
+      let doc = format!("Insert an item {ident} into the database table {table_name}<br/>SQL statement:<br/>```INSERT INTO {table_name} ({columns}) VALUES ({values})```",
+        columns = columns_stmt.replace("{","").replace("}",""),
+        values  = values_stmt,
+      );
       quote::quote! {
-        impl derive_sql::traits::InsertStatement for #sql_ident {
+        impl derive_sql::traits::InsertFlavoredStatement for #sql_ident {
           #[doc = #doc]
-          fn insert_stmt(&self) -> derive_sql::Result<String> {
-            Ok(format!("{}", #statement))
+          fn insert_stmt<C, R>(&self, conn: &C) -> derive_sql::Result<String> 
+          where C: derive_sql::traits::Connection<R>,
+                R: derive_sql::traits::Row,
+          {
+            Ok(format!("INSERT INTO {table_name} ({columns}) VALUES ({values})", 
+              table_name = conn.flavor().table(#table_name)?,
+              columns = format!(#columns_stmt, #(#columns, )*),
+              values = vec![#(#values, )*].join(", "),
+            ))
           }
         }
       }
     };
 
     let update_statement = {
-      let statement = format!("UPDATE {table_name} SET {}",
-        fields.iter()
-        .map(|f| format!("`{}` = ?", f.ident()))
-        .collect::<Vec<String>>().join(", ")
-      );
-      let doc = format!("Update item(s) nominated by the selector in the table {table_name}<br/>SQL statement:<br/>```{statement}```");
+      let statement = fields.iter().map(|f| format!("{{{ident}}} = {{{ident}_value}}",ident = f.ident())).collect::<Vec<String>>().join(", ");
+      let values  = fields.iter().enumerate()
+        .map(|(i,f)| {
+          let ident = quote::format_ident!("{ident}_value", ident = f.ident());
+          quote::quote! { #ident = conn.flavor().value(#i)? }
+        })
+        .collect::<Vec<proc_macro2::TokenStream>>();
+      let doc = format!("Update item(s) nominated by the selector in the table {table_name}<br/>SQL statement:<br/>```UPDATE {table_name} SET {statement}```",
+        statement = fields.iter().map(|f| format!("{ident} = ?", ident = f.ident())).collect::<Vec<String>>().join(", "));
 
       quote::quote! {
-        impl derive_sql::traits::UpdateStatement for #sql_ident {
+        impl derive_sql::traits::UpdateFlavoredStatement for #sql_ident {
           #[doc = #doc]
-          fn update_stmt(&self) -> derive_sql::Result<String> {
-            Ok(format!("{}", #statement))
+          fn update_stmt<C, R>(&self, conn: &C) -> derive_sql::Result<String> 
+          where C: derive_sql::traits::Connection<R>,
+                R: derive_sql::traits::Row
+          {
+            #(let #values ; )*
+            #(let #columns ; )*
+            Ok(format!("UPDATE {table_name} SET {statement}", 
+              table_name = conn.flavor().table(#table_name)?,
+              statement = format!(#statement),
+            ))
           }
         }
       }

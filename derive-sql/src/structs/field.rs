@@ -4,17 +4,21 @@ use super::*;
 /// For example, create a condition to filter name column equal to 'Jane':
 ///
 /// ```rust
+/// # #[cfg(feature = "sqlite")]
+/// # fn wrapper() {
+/// let conn = rusqlite::Connection::open_in_memory().unwrap();
 /// use derive_sql::structs::{Field, filter, order};
-/// use derive_sql::traits::{Filter, Order};
+/// use derive_sql::traits::{FlavoredFilter, FlavoredOrder};
 ///
 /// let condition: filter::Condition<_> = Field::from("name").eq("Jane");
-/// assert!(condition.filter().eq("`name` = 'Jane'"));
+/// assert!(condition.filter(&conn).unwrap().eq("`name` = 'Jane'"));
 ///
 /// let condition: order::Condition = Field::from("name").ascending();
-/// assert!(condition.as_order_clause().eq("`name` ASC"));
+/// assert!(condition.as_order_clause(&conn).unwrap().eq("`name` ASC"));
 ///
 /// let condition: filter::Condition<_> = Field::from_table_column("table", "col").eq("val");
-/// assert!(condition.filter().eq("`table`.`col` = 'val'"));
+/// assert!(condition.filter(&conn).unwrap().eq("`table`.`col` = 'val'"));
+/// # }()
 /// ```
 pub struct Field {
   table: Option<String>,
@@ -147,48 +151,54 @@ impl Field {
 mod tests {
   use super::*;
 
+  type Row = traits::tests::Row;
+
   #[test]
   fn it_display_correct_clause_for_null_not_null_tests() -> Result<()> {
-    use traits::Filter;
-    assert!(Field::from("key").is_some().filter().eq("`key` IS NOT NULL"));
-    assert!(Field::from("key").is_none().filter().eq("`key` IS NULL"));
+    use traits::FlavoredFilter;
+    let conn = traits::tests::SQLiteFlavoredConnection {};
+    assert!(Field::from("key").is_some().filter::<_, Row>(&conn)?.eq("`key` IS NOT NULL"));
+    assert!(Field::from("key").is_none().filter::<_, Row>(&conn)?.eq("`key` IS NULL"));
     Ok(())
   }
 
   #[test]
   fn it_display_correct_clause_for_u32() -> Result<()> {
-    use traits::Filter;
+    use traits::FlavoredFilter;
+    let conn = traits::tests::SQLiteFlavoredConnection {};
 
-    assert!(Field::from("key").eq(1u32).filter().eq("`key` = 1"));
-    assert!(Field::from("key").ne(1u32).filter().eq("`key` != 1"));
-    assert!(Field::from("key").gt(2u32).filter().eq("`key` > 2"));
-    assert!(Field::from("key").ge(2u32).filter().eq("`key` >= 2"));
-    assert!(Field::from("key").lt(2u32).filter().eq("`key` < 2"));
-    assert!(Field::from("key").le(2u32).filter().eq("`key` <= 2"));
+    assert!(Field::from("key").eq(1u32).filter::<_, Row>(&conn)?.eq("`key` = 1"));
+    assert!(Field::from("key").ne(1u32).filter::<_, Row>(&conn)?.eq("`key` != 1"));
+    assert!(Field::from("key").gt(2u32).filter::<_, Row>(&conn)?.eq("`key` > 2"));
+    assert!(Field::from("key").ge(2u32).filter::<_, Row>(&conn)?.eq("`key` >= 2"));
+    assert!(Field::from("key").lt(2u32).filter::<_, Row>(&conn)?.eq("`key` < 2"));
+    assert!(Field::from("key").le(2u32).filter::<_, Row>(&conn)?.eq("`key` <= 2"));
 
     Ok(())
   }
 
   #[test]
   fn it_display_correct_clause_for_string() -> Result<()> {
-    use traits::Filter;
+    use traits::FlavoredFilter;
+    let conn = traits::tests::SQLiteFlavoredConnection {};
 
-    assert!(Field::from("key_str").eq("val").filter().eq("`key_str` = 'val'"));
-    assert!(Field::from("key_str").ne("val").filter().eq("`key_str` != 'val'"));
-    assert!(Field::from("key_str").gt("val").filter().eq("`key_str` > 'val'"));
-    assert!(Field::from("key_str").ge("val").filter().eq("`key_str` >= 'val'"));
-    assert!(Field::from("key_str").lt("val").filter().eq("`key_str` < 'val'"));
-    assert!(Field::from("key_str").le("val").filter().eq("`key_str` <= 'val'"));
+    assert!(Field::from("key_str").eq("val").filter::<_, Row>(&conn)?.eq("`key_str` = 'val'"));
+    assert!(Field::from("key_str").ne("val").filter::<_, Row>(&conn)?.eq("`key_str` != 'val'"));
+    assert!(Field::from("key_str").gt("val").filter::<_, Row>(&conn)?.eq("`key_str` > 'val'"));
+    assert!(Field::from("key_str").ge("val").filter::<_, Row>(&conn)?.eq("`key_str` >= 'val'"));
+    assert!(Field::from("key_str").lt("val").filter::<_, Row>(&conn)?.eq("`key_str` < 'val'"));
+    assert!(Field::from("key_str").le("val").filter::<_, Row>(&conn)?.eq("`key_str` <= 'val'"));
 
     Ok(())
   }
 
   #[test]
   fn it_display_correct_order_clause() -> Result<()> {
-    use traits::Order;
+    use traits::FlavoredOrder;
+    let conn = traits::tests::SQLiteFlavoredConnection {};
 
-    assert!(Field::from("order").ascending().as_order_clause().eq("`order` ASC"));
-    assert!(Field::from("order").descending().as_order_clause().eq("`order` DESC"));
+    assert!(Field::from("order").ascending().as_order_clause::<_, Row>(&conn)?.eq("`order` ASC"));
+    assert!(Field::from("order").descending().as_order_clause::<_, Row>(&conn)?.eq("`order` DESC"));
 
     Ok(())
   }

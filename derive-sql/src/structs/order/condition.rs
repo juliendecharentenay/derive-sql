@@ -27,19 +27,26 @@ impl Condition
   }
 }
 
-impl traits::Order for Condition
+impl traits::FlavoredOrder for Condition
 {
   /// Return the `ORDER BY` clause associated with the condition
-  fn as_order_clause(&self) -> String {
+  fn as_order_clause<C, R>(&self, conn: &C) -> Result<String> 
+  where C: traits::Connection<R>, R: traits::Row
+  {
+    let flavor = conn.flavor();
     let label = if let Some(table) = &self.table {
-      format!("`{table}`.`{label}`", label=&self.label)
+      format!("{table}.{label}", 
+        table=flavor.table(table)?,
+        label=flavor.column(self.label.as_str())?)
     } else {
-      format!("`{label}`", label=&self.label)
+      format!("{label}",
+        label=flavor.column(self.label.as_str())?)
     };
-    match &self.operator {
+    let r = match &self.operator {
       Operator::Ascending   => format!("{label} ASC"),
       Operator::Descending  => format!("{label} DESC"),
-    }
+    };
+    Ok(r)
   }
 }
 
@@ -47,12 +54,14 @@ impl traits::Order for Condition
 mod tests {
   use super::*;
 
-  #[test]
+  #[cfg(test)]
   fn it_display_correct_clause() -> Result<()> {
-    use traits::Order;
+    use traits::FlavoredOrder;
+    let conn = traits::tests::SQLiteFlavoredConnection {};
+    type Row = traits::tests::Row;
 
-    assert!(Condition::from_label_operator("key".to_string(), Operator::Ascending).as_order_clause().eq("`key` ASC"));
-    assert!(Condition::from_label_operator("key".to_string(), Operator::Descending).as_order_clause().eq("`key` DESC"));
+    assert!(Condition::from_label_operator("key".to_string(), Operator::Ascending).as_order_clause::<_, Row>(&conn)?.eq("`key` ASC"));
+    assert!(Condition::from_label_operator("key".to_string(), Operator::Descending).as_order_clause::<_, Row>(&conn)?.eq("`key` DESC"));
 
     Ok(())
   }

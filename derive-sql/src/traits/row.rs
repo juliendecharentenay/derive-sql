@@ -3,6 +3,7 @@ use super::*;
 #[derive(Debug, Clone)]
 pub enum Value {
   Null,
+  Bool(bool),
   Integer(i64),
   UInteger(u64),
   Real(f64),
@@ -12,6 +13,43 @@ pub enum Value {
   MysqlValue(::mysql::Value),
 }
 
+
+#[cfg(feature = "postgres")]
+impl<'a> postgres::types::FromSql<'a> for Value {
+  fn from_sql(ty: &postgres::types::Type, raw: &'a [u8]) -> std::result::Result<Self, Box<dyn core::error::Error + core::marker::Sync + core::marker::Send>> {
+    use postgres::types::Type;
+    let name = ty.name();
+    match true {
+      true if raw.len() == 0 => Ok(Value::Null),
+      true if name.eq(Type::BOOL.name()) => Ok(Value::Bool(<bool as postgres::types::FromSql>::from_sql(ty, raw)?)),
+      // true if name.eq(Type::DATE.name()) => true,
+      true if name.eq(Type::FLOAT4.name()) => Ok(Value::Real(<f32 as postgres::types::FromSql>::from_sql(ty, raw)?.into())),
+      true if name.eq(Type::FLOAT8.name()) => Ok(Value::Real(<f64 as postgres::types::FromSql>::from_sql(ty, raw)?.into())),
+      true if name.eq(Type::INT2.name()) => Ok(Value::Integer(<i16 as postgres::types::FromSql>::from_sql(ty, raw)?.into())),
+      true if name.eq(Type::INT4.name()) => Ok(Value::Integer(<i32 as postgres::types::FromSql>::from_sql(ty, raw)?.into())),
+      true if name.eq(Type::INT8.name()) => Ok(Value::Integer(<i64 as postgres::types::FromSql>::from_sql(ty, raw)?.into())),
+      true if name.eq(Type::TEXT.name()) => Ok(Value::Text(<String as postgres::types::FromSql>::from_sql(ty, raw)?.into())),
+      true if name.eq(Type::BYTEA.name()) => Ok(Value::Blob(<Vec<u8> as postgres::types::FromSql>::from_sql(ty, raw)?.into())),
+      _ => Err(Error::PostgreSQLInvalidConversion(name.to_string()).into()),
+    }
+  }
+
+  fn accepts(ty: &postgres::types::Type) -> bool {
+    use postgres::types::Type;
+    let name = ty.name();
+    match true {
+      true if name.eq(Type::BOOL.name()) => true,
+      // true if name.eq(Type::DATE.name()) => true,
+      true if name.eq(Type::FLOAT4.name()) => true,
+      true if name.eq(Type::FLOAT8.name()) => true,
+      true if name.eq(Type::INT4.name()) => true,
+      true if name.eq(Type::INT8.name()) => true,
+      true if name.eq(Type::TEXT.name()) => true,
+      true if name.eq(Type::BYTEA.name()) => true,
+      _ => false,
+    }
+  }
+}
 
 #[cfg(feature = "mysql")]
 impl std::convert::TryFrom<::mysql::Value> for Value {
@@ -39,6 +77,7 @@ impl TryFromValue for Vec<u8> {
 impl TryFromValue for bool {
   fn try_from(v: Value) -> Result<Self> { 
     match v {
+      Value::Bool(v) => Ok(v),
       Value::Integer(v) => Ok(v != 0),
 #[cfg(feature = "mysql")]
       Value::MysqlValue(v) => Ok(::mysql::from_value_opt(v)?),

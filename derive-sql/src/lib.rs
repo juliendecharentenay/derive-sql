@@ -250,6 +250,16 @@
 //! assert!(run(&mut mysql_conn).eq("Jane Doe"));
 #![cfg_attr(not(feature="mysql"), doc = "*/")]
 //!
+//! // Call using a PostgreSQL connection
+#![cfg_attr(not(feature="postgres"), doc = "/*")]
+//!  let mut postgresql_conn = postgres::Client::configure()
+//!    .host("localhost")
+//!    .user("test")
+//!    .password("password")
+//!    .dbname("simpledb")
+//!    .connect(postgres::NoTls).unwrap();
+//! // assert!(run(&mut postgresql_conn).eq("Jane Doe"));
+#![cfg_attr(not(feature="postgres"), doc = "*/")]
 //! ```
 //!
 //! ## Legacy v0.10 feature:
@@ -338,6 +348,10 @@ pub use rusqlite;
 #[cfg(feature="mysql")]
 /// Re-export `mysql` library used
 pub use mysql;
+
+#[cfg(feature="postgres")]
+/// Re-export 'postgres' library used
+pub use postgres;
 
 pub mod traits;
 pub mod proxy;

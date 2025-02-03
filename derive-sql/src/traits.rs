@@ -3,16 +3,7 @@ use super::*;
 
 mod params; pub use params::{Params, Param, ToParam};
 mod row; pub use row::{Value, Row, TryFromRefRow, }; // Row2, RefTryInto, };
-
-/// Enum to advise on the SQL flavor supported by the connection.
-pub enum Flavor {
-  /// SQLite type connection
-  SQLite,
-  /// MySQL type connection
-  MySQL,
-  /// Not any of the other...
-  Other,
-}
+mod flavor; pub use flavor::{Flavor};
 
 /// Generic trait to be implemented by SQL drivers (or proxy to SQL drivers). This trait is used
 /// to provide the basis of the functionalities on which the crate rely
@@ -197,14 +188,35 @@ where R: Row,
 }
 
 mod sql;    // pub use sql::Sql;
-mod table;  pub use table::{Table, TableStatement};
-mod insert; pub use insert::{Insert, InsertMultiple, InsertStatement};
-mod select; pub use select::{Select as SelectV2, SelectStatement};
-mod update; pub use update::{Update, UpdateStatement};
-mod delete; pub use delete::{Delete, DeleteStatement};
-mod filter; pub use filter::{Filter};
-mod order;  pub use order::{Order};
+mod table;  pub use table::{Table, TableStatement, TableFlavoredStatement};
+mod insert; pub use insert::{Insert, InsertMultiple, InsertStatement, InsertFlavoredStatement};
+mod select; pub use select::{Select as SelectV2, SelectStatement, SelectFlavoredStatement};
+mod update; pub use update::{Update, UpdateStatement, UpdateFlavoredStatement};
+mod delete; pub use delete::{Delete, DeleteStatement, DeleteFlavoredStatement};
+mod filter; pub use filter::{Filter, FlavoredFilter};
+mod order;  pub use order::{Order, FlavoredOrder};
 
+/// Combine a flavored statement with optional filter, order, limit and offset to return full statement
+fn statement_with_conn_filter_order_limit_offset_options<C, R, F, O>(statement: String, conn: &C, filter: Option<&F>, order: Option<&O>, limit: Option<usize>, offset: Option<usize>) -> Result<String>
+where C: Connection<R>, R: Row, F: FlavoredFilter, O: FlavoredOrder,
+{
+  let statement = if let Some(filter) = filter { 
+    let filter = filter.filter(conn)?;
+    if ! filter.is_empty() { format!("{statement} WHERE {filter}") } 
+    else { statement }
+  } else { statement };
+  let statement = if let Some(order) = order {
+    let order = order.as_order_clause(conn)?;
+    if ! order.is_empty() { format!("{statement} ORDER BY {order}") }
+    else { statement }
+  } else { statement };
+  let statement = if let Some(limit) = limit { format!("{statement} LIMIT {limit}") } else { statement };
+  let statement = if let Some(offset) = offset { 
+    if offset > 0 { format!("{statement} OFFSET {offset}") }
+    else { statement }
+  } else { statement };
+  Ok(statement)
+}
 /// Combine a statement with optional filter, order, limit and offset to return full statement
 fn statement_with_filter_order_limit_offset_options<F, O>(statement: String, filter: Option<&F>, order: Option<&O>, limit: Option<usize>, offset: Option<usize>) -> Result<String>
 where F: Filter, O: Order,
@@ -225,6 +237,36 @@ where F: Filter, O: Order,
     else { statement }
   } else { statement };
   Ok(statement)
+}
+
+#[cfg(test)]
+pub mod tests {
+  use super::*;
+
+  pub struct SQLiteFlavoredConnection {}
+  impl<R> Connection<R> for SQLiteFlavoredConnection 
+  where R: traits::Row
+  {
+    fn flavor(&self) -> Flavor { Flavor::SQLite }
+    fn execute_with_params<S, P>(&mut self, _query: S, _params: &P) -> Result<()>
+    where S: std::convert::AsRef<str>, P: Params,
+    { Err("command not available for SQLiteFlavoredConnection".into()) }
+    fn execute_with_params_iterator<'a, S, I, P>(&mut self, _query: S, _params_iter: I) -> Result<()>
+    where S: std::convert::AsRef<str>, P: Params + 'a, 
+          I: core::iter::IntoIterator<Item = &'a P>,
+    { Err("command not available for SQLiteFlavoredConnection".into()) }
+    fn query<S>(&mut self, _query: S) -> Result<Vec<R>>
+    where S: std::convert::AsRef<str>,
+    { Err("command not available for SQLiteFlavoredConnection".into()) }
+  }
+
+  pub struct Row {}
+  impl row::Row for Row {
+    fn get_value(&self, _i: usize) -> Option<Result<Value>> { None }
+    fn get<T>(&self, _i: usize) -> Option<Result<T>>
+    where T: row::TryFromValue,
+    { None }
+  }
 }
 
 #[cfg(feature="compatibility_v0_10")]

@@ -66,14 +66,62 @@ where A: ToParam, B: ToParam, C: ToParam, D: ToParam, E: ToParam, F: ToParam, G:
 }
 
 
+#[derive(Debug)]
 pub enum Param {
   Null,
   Bytes(Vec<u8>),
-  Int(i64),
+  SmallInt(i16),
+  Int(i32),
+  BigInt(i64),
+  Real(f32),
   Double(f64),
   Text(String),
   NaiveDate(chrono::naive::NaiveDate),
   NaiveDateTime(chrono::naive::NaiveDateTime),
+  Bool(bool),
+}
+
+#[cfg(feature = "postgres")]
+impl ::postgres::types::ToSql for Param {
+  fn to_sql(&self, ty: &::postgres::types::Type, out: &mut bytes::BytesMut) -> std::result::Result<::postgres::types::IsNull, Box<dyn std::error::Error + Sync + Send>> 
+  where Self: Sized
+  {
+    match self {
+      Param::Null         => Ok(::postgres::types::IsNull::Yes),
+      Param::Bytes(v)     => v.to_sql(ty, out),
+      Param::SmallInt(v)  => v.to_sql(ty, out),
+      Param::Int(v)       => v.to_sql(ty, out),
+      Param::BigInt(v)    => v.to_sql(ty, out),
+      Param::Real(v)      => v.to_sql(ty, out),
+      Param::Double(v)    => v.to_sql(ty, out),
+      Param::Text(v)      => v.to_sql(ty, out),
+      Param::NaiveDate(v) => v.to_sql(ty, out),
+      Param::NaiveDateTime(v) => v.to_sql(ty, out),
+      Param::Bool(v)      => v.to_sql(ty, out),
+    }
+  }
+
+  fn accepts(ty: &::postgres::types::Type) -> bool { 
+    match ty {
+      _ => true,
+    }
+  }
+
+  fn to_sql_checked(&self, ty: &::postgres::types::Type, out: &mut bytes::BytesMut) -> std::result::Result<::postgres::types::IsNull, Box<dyn std::error::Error + Send + Sync>> { 
+    match self {
+      Param::Null         => Ok(::postgres::types::IsNull::Yes),
+      Param::Bytes(v)     => v.to_sql_checked(ty, out),
+      Param::SmallInt(v)  => v.to_sql_checked(ty, out),
+      Param::Int(v)       => v.to_sql_checked(ty, out),
+      Param::BigInt(v)    => v.to_sql_checked(ty, out),
+      Param::Real(v)      => v.to_sql_checked(ty, out),
+      Param::Double(v)    => v.to_sql_checked(ty, out),
+      Param::Text(v)      => v.to_sql_checked(ty, out),
+      Param::NaiveDate(v) => v.to_sql_checked(ty, out),
+      Param::NaiveDateTime(v) => v.to_sql_checked(ty, out),
+      Param::Bool(v)      => v.to_sql_checked(ty, out),
+    }
+  }
 }
 
 #[cfg(feature = "sqlite")]
@@ -82,11 +130,15 @@ impl ::rusqlite::types::ToSql for Param {
     match self {
       Param::Null      => ::rusqlite::types::Null.to_sql(),
       Param::Bytes(v)  => v.to_sql(),
+      Param::SmallInt(v) => v.to_sql(),
       Param::Int(v)    => v.to_sql(),
+      Param::BigInt(v) => v.to_sql(),
+      Param::Real(v)   => v.to_sql(),
       Param::Double(v) => v.to_sql(),
       Param::Text(v)   => v.to_sql(),
       Param::NaiveDate(v) => v.to_sql(),
       Param::NaiveDateTime(v) => v.to_sql(),
+      Param::Bool(v)   => v.to_sql(),
     }
   }
 }
@@ -98,29 +150,34 @@ impl TryFrom<Param> for ::mysql::Value {
     match p {
       Param::Null      => Ok(::mysql::Value::NULL),
       Param::Bytes(v)  => Ok(v.into()),
+      Param::SmallInt(v) => Ok(v.into()),
       Param::Int(v)    => Ok(v.into()),
+      Param::BigInt(v) => Ok(v.into()),
+      Param::Real(v)   => Ok(v.into()),
       Param::Double(v) => Ok(v.into()),
       Param::Text(v)   => Ok(v.into()),
       Param::NaiveDate(v) => Ok(v.into()),
       Param::NaiveDateTime(v) => Ok(v.into()),
+      Param::Bool(v)   => Ok((if v { 1 } else { 0 }).into()),
     }
   }
 }
 
 pub trait ToParam        { fn to_param(&self) -> Result<Param>; }
 impl ToParam for Vec<u8> { fn to_param(&self) -> Result<Param> { Ok(Param::Bytes(self.clone())) } }
-impl ToParam for bool    { fn to_param(&self) -> Result<Param> { Ok(Param::Int(if *self { 1 } else { 0 })) } }
-impl ToParam for usize   { fn to_param(&self) -> Result<Param> { Ok(Param::Int((*self).try_into()?)) } }
-impl ToParam for u8      { fn to_param(&self) -> Result<Param> { Ok(Param::Int((*self).into())) } }
-impl ToParam for u16     { fn to_param(&self) -> Result<Param> { Ok(Param::Int((*self).into())) } }
-impl ToParam for u32     { fn to_param(&self) -> Result<Param> { Ok(Param::Int((*self).into())) } }
-impl ToParam for u64     { fn to_param(&self) -> Result<Param> { Ok(Param::Int((*self).try_into()?)) } }
-impl ToParam for isize   { fn to_param(&self) -> Result<Param> { Ok(Param::Int((*self).try_into()?)) } }
-impl ToParam for i8      { fn to_param(&self) -> Result<Param> { Ok(Param::Int((*self).into())) } }
-impl ToParam for i16     { fn to_param(&self) -> Result<Param> { Ok(Param::Int((*self).into())) } }
+// impl ToParam for bool    { fn to_param(&self) -> Result<Param> { Ok(Param::Int(if *self { 1 } else { 0 })) } }
+impl ToParam for bool    { fn to_param(&self) -> Result<Param> { Ok(Param::Bool((*self).into())) } }
+impl ToParam for usize   { fn to_param(&self) -> Result<Param> { Ok(Param::BigInt((*self).try_into()?)) } }
+impl ToParam for u8      { fn to_param(&self) -> Result<Param> { Ok(Param::SmallInt((*self).into())) } }
+impl ToParam for u16     { fn to_param(&self) -> Result<Param> { Ok(Param::SmallInt((*self).try_into()?)) } }
+impl ToParam for u32     { fn to_param(&self) -> Result<Param> { Ok(Param::Int((*self).try_into()?)) } }
+impl ToParam for u64     { fn to_param(&self) -> Result<Param> { Ok(Param::BigInt((*self).try_into()?)) } }
+impl ToParam for isize   { fn to_param(&self) -> Result<Param> { Ok(Param::BigInt((*self).try_into()?)) } }
+impl ToParam for i8      { fn to_param(&self) -> Result<Param> { Ok(Param::SmallInt((*self).into())) } }
+impl ToParam for i16     { fn to_param(&self) -> Result<Param> { Ok(Param::SmallInt((*self).into())) } }
 impl ToParam for i32     { fn to_param(&self) -> Result<Param> { Ok(Param::Int((*self).into())) } }
-impl ToParam for i64     { fn to_param(&self) -> Result<Param> { Ok(Param::Int(*self)) } }
-impl ToParam for f32     { fn to_param(&self) -> Result<Param> { Ok(Param::Double((*self).into())) } }
+impl ToParam for i64     { fn to_param(&self) -> Result<Param> { Ok(Param::BigInt(*self)) } }
+impl ToParam for f32     { fn to_param(&self) -> Result<Param> { Ok(Param::Real((*self).into())) } }
 impl ToParam for f64     { fn to_param(&self) -> Result<Param> { Ok(Param::Double(*self)) } }
 impl ToParam for String  { fn to_param(&self) -> Result<Param> { Ok(Param::Text(self.clone())) } }
 impl ToParam for chrono::naive::NaiveDate { fn to_param(&self) -> Result<Param> { Ok(Param::NaiveDate(self.clone())) } }
@@ -137,5 +194,4 @@ where T: ToParam
     }
   }
 }
-  
 

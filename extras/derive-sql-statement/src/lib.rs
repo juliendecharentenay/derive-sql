@@ -52,7 +52,7 @@
 //!   db.drop(s).unwrap();
 //! }
 //!
-//! let pool = ::mysql::Pool::new("mysql://test@localhost/simpledb").unwrap();
+//! let pool = mysql::Pool::new("mysql://test@localhost/simpledb").unwrap();
 //! let mut connection = pool.get_conn().unwrap();
 //! handle(&mut connection);
 //! ```

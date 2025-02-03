@@ -20,11 +20,8 @@ attribute-derive = "0.8.1"
 derive-sql-common = { path = "../derive-sql-common" }
 
 [dev-dependencies]
-## Pub derive-sql = { version = "0", features = [ "sqlite", "mysql" ] }
-derive-sql = { path = "../../derive-sql", features = [ "sqlite", "mysql" ] }
-
-mysql = { version = "24" }
-rusqlite = { version = "0", features = [ "chrono" ] }
+## Pub derive-sql = { version = "0", features = [ "sqlite", "mysql", "postgres" ] }
+derive-sql = { path = "../../derive-sql", features = [ "sqlite", "mysql", "postgres" ] }
 env_logger = "0"
 log = "0"
 

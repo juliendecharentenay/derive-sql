@@ -106,7 +106,7 @@ where P: traits::Params,
      16 => statement.execute([ &params[0], &params[1], &params[2], &params[3], &params[4], &params[5], &params[6], &params[7], &params[8], &params[9], &params[10], &params[11], &params[12], &params[13], &params[14], &params[15], ] )?,
      17 => statement.execute([ &params[0], &params[1], &params[2], &params[3], &params[4], &params[5], &params[6], &params[7], &params[8], &params[9], &params[10], &params[11], &params[12], &params[13], &params[14], &params[15], &params[16], ] )?,
       // _ => { self.conn.execute(query, params.iter().collect::<Vec<&traits::Param>>().as_slice())?; },
-      _ => { return Err(Error::SqliteMaximumNumberOfParametersExceeded(17, params.len())); },
+      _ => { return Err(Error::MaximumNumberOfParametersExceeded(17, params.len())); },
     };
     Ok(())
 }

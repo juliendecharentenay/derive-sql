@@ -1,11 +1,11 @@
 //! Simple example
 //! Run with `cargo run --example simple --features mysql`
 //!
-use derive_sql::{traits, structs::Field, structs::filter, structs::order};
+use derive_sql::{traits, structs::Field, structs::filter, structs::order, mysql, rusqlite, postgres};
 
 fn init_logger() {
   let _ = env_logger::builder()
-  .filter_level(log::LevelFilter::max())
+  .filter_level(log::LevelFilter::Info)
   .try_init();
 }
 
@@ -37,17 +37,27 @@ fn main() {
     log::error!("simple::sample failed to run with sqlite with error: {}", e);
     std::process::exit(1);
   }
+  log::info!("=================================");
+  log::info!("Run simple with postgresql connection");
+  let mut conn = postgres::Client::configure()
+    .host("localhost")
+    .user("test")
+    .password("password")
+    .dbname("simpledb")
+    .connect(postgres::NoTls).unwrap();
+  if let Err(e) = sample(&mut conn) {
+    log::error!("simple::sample failed to run with postgres with error: {}", e);
+    std::process::exit(1);
+  }
 }
 
 fn sample<Conn, Row>(conn: &mut Conn) -> Result<(), Box<dyn std::error::Error>> 
 where Conn: traits::Connection<Row>,
       Row: traits::Row,
 {
-  use derive_sql::traits::{Table, SelectV2, Insert, Delete, Update};
-  /*
+  use derive_sql::traits::{Table, SelectV2, Insert, Delete, Update, Connection};
   let mut log = derive_sql::proxy::Log::from_connection_level(conn, log::Level::Info);
   let conn = &mut log;
-  */
 
   let db = SqlPerson::default();
 
@@ -121,14 +131,47 @@ where Conn: traits::Connection<Row>,
   log::info!("Delete persons with filter... ok");
 
   // Update the first person with the name "Jack"...
-  log::info!("Update persons with filter and limit...");
-  db.update_with_filter_order_limit_offset(conn,
-    &Field::from("name").eq("Jack"),
-    &order::None::default(),
-    1, // limit
-    0, // offset
-    &Person { name: "Jo".to_string(), age: 44, active: true, nickname: None, },
-  )?;
+  match conn.flavor() {
+    derive_sql::traits::Flavor::SQLite
+    | derive_sql::traits::Flavor::PostgreSQL => {
+      log::info!("Update persons with filter and limit using a custom filter...");
+      struct CustomFilter {}
+      impl derive_sql::traits::FlavoredFilter for CustomFilter {
+        fn filter<C, R>(&self, conn: &C) -> derive_sql::Result<String>
+        where C: derive_sql::traits::Connection<R>, R: derive_sql::traits::Row,
+        {
+          let flavor = conn.flavor();
+          Ok(format!(r#"
+            {row_id} = (
+              SELECT {row_id} FROM {table_name}
+              WHERE {name} = 'Jack'
+              LIMIT 1
+            )
+          "#,
+          table_name = flavor.table("person")?,
+          name = flavor.column("name")?,
+          row_id = flavor.row_id()?,
+          ))
+        }
+      }
+      db.update_with_filter(conn,
+        &CustomFilter {},
+        &Person { name: "Jo".to_string(), age: 44, active: true, nickname: None, },
+      )?;
+    },
+
+    derive_sql::traits::Flavor::MySQL => {
+      log::info!("[MySQL] Update persons with filter and limit...");
+      db.update_with_filter_order_limit_offset(conn,
+        &Field::from("name").eq("Jack"),
+        &order::None::default(),
+        1, // limit
+        0, // offset
+        &Person { name: "Jo".to_string(), age: 44, active: true, nickname: None, },
+      )?;
+    },
+  }
+
   let persons: Vec<Person> = db.select_with_filter(conn, &Field::from("name").eq("Jack"))?;
   assert!(persons.len() == 1);
   log::info!("Update persons with filter and limit... ok");

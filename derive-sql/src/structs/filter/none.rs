@@ -4,7 +4,9 @@ use super::*;
 #[derive(Default)]
 pub struct None {}
 
-impl traits::Filter for None {
+impl traits::FlavoredFilter for None {
   /// Returns an empty string
-  fn filter(&self) -> String { String::default() }
+  fn filter<C, R>(&self, _: &C) -> Result<String>
+  where C: traits::Connection<R>, R: traits::Row,
+  { Ok(String::default()) }
 }

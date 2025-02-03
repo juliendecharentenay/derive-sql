@@ -15,6 +15,8 @@ rusqlite = { version = "0", features = [ "vtab", "chrono", ], optional = true }
 fallible-iterator = { version = "0", optional = true }
 mysql    = { version = "25", optional = true }
 mysql_common = { version = "0", features = [ "chrono" ], optional = true }
+postgres = { version = "0", features = [ "with-chrono-0_4" ], optional = true }
+bytes = { version = "1", optional = true }
 log = "0"
 thiserror = "1"
 enum_dispatch = { version = "0" }
@@ -34,9 +36,10 @@ default = [ ]
 sqlite = [ "rusqlite", "derive-sql-sqlite", "fallible-iterator" ]
 mysql  = [ "dep:mysql", "mysql_common", "derive-sql-mysql" ]
 compatibility_v0_10 = [ "derive-sql-mysql", "derive-sql-sqlite" ]
+postgres = [ "dep:postgres", "bytes" ]
 
 [package.metadata.docs.rs]
-features = [ "sqlite", "mysql", "compatibility_v0_10" ]
+features = [ "sqlite", "mysql", "compatibility_v0_10", "postgres", ]
 
 [dev-dependencies]
 mockall = { version = "0" }

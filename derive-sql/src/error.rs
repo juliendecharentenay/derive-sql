@@ -5,6 +5,14 @@ pub type DeriveSqlResult<T> = std::result::Result<T, Error>;
 pub enum Error {
   #[error("Not implemented yet")]
   NotImplemented,
+  #[error("`rowid` or similar approach is not supported for MySQL queries. Rewrite your query to elliminate its use")]
+  MySQLRowIdNotSupported,
+  #[error("Update statement with limit and/or offset is not supported")]
+  UpdateWithLimitOffsetNotSupported,
+  #[error("Unable to convert from PostgreSQL type `{0}`")]
+  PostgreSQLInvalidConversion(String),
+  #[error("Type `{1}` is not supported in SQL flavor `{0}`")]
+  SqlTypeNotSupported(String, String),
   #[error(transparent)]
   FromChronoParseError(#[from] chrono::ParseError),
   #[error(transparent)]
@@ -16,7 +24,7 @@ pub enum Error {
   #[error("Conversion of SQL value to type `{0}` is invalid")]
   InvalidTypeFor(String),
   #[error("The maximum number of parameter - `{0}` - has been exceeded. Requested: `{1}`")]
-  SqliteMaximumNumberOfParametersExceeded(usize, usize),
+  MaximumNumberOfParametersExceeded(usize, usize),
   #[error("Row item `{0}` not found")]
   RowItemNotFound(usize),
   #[error("Object insertion failed")]
@@ -38,6 +46,9 @@ pub enum Error {
   #[cfg(feature = "sqlite")]
   #[error(transparent)]
   RusqliteError(#[from] rusqlite::Error),
+  #[cfg(feature = "postgres")]
+  #[error(transparent)]
+  PostgresError(#[from] ::postgres::Error),
   #[error("Error: {0}")]
   Misc(String),
 }

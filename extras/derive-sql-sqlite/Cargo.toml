@@ -1,6 +1,6 @@
 [package]
 name = "derive-sql-sqlite"
-version = "0.12.1"
+version = "0.13.0"
 edition = "2021"
 license = "MIT"
 description = "Accompany the `derive-sql` crate. Implements the `DeriveSqlite` procedural macro to implement trait for SQLite"
@@ -16,15 +16,15 @@ quote = "1"
 proc-macro2 = "1"
 attribute-derive = "0.8.1"
 
-## Pub derive-sql-common = { version = "0" }
-derive-sql-common = { path = "../derive-sql-common" }
+derive-sql-common = { version = "0" }
+## Dev derive-sql-common = { path = "../derive-sql-common" }
 
 [dev-dependencies]
 # chrono = { version = "0" }
 rusqlite = { version = "0", features = [ "chrono" ] }
 env_logger = "0"
 log = "0"
-## Pub derive-sql = { version = "0", features = [ "sqlite" ] }
-derive-sql = { path = "../../derive-sql", features = [ "sqlite" ] }
+derive-sql = { version = "0", features = [ "sqlite" ] }
+## Dev derive-sql = { path = "../../derive-sql", features = [ "sqlite" ] }
 
 

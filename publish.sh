@@ -1,7 +1,7 @@
 #!/bin/bash
 
-export OLD_VERSION=0.12.0
-export NEW_VERSION=0.12.1
+export OLD_VERSION=0.12.1
+export NEW_VERSION=0.13.0
 export VERSION=v$NEW_VERSION
 
 # Modify Cargo.toml to use version in place of path
